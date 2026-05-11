@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from .models import Pengguna, Member, Staf, ClaimMissingMiles, Redeem, Transfer, MemberAwardMilesPackage
+from django.contrib.auth.hashers import check_password
 
 def register_view(request):
     return render(request, 'register.html')
@@ -105,14 +106,25 @@ def get_role(email):
 # =====================
 def login_view(request):
     if request.method == 'POST':
-        email    = request.POST.get('email', '').strip()
+        email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '').strip()
+
         try:
             user = Pengguna.objects.get(email=email)
-            request.session['user_email'] = user.email
-            return redirect('dashboard')
+
+            if check_password(password, user.password):
+                request.session['user_email'] = user.email
+                return redirect('dashboard')
+            else:
+                print(password)
+                print(user.password)
+                print("CHECK:", check_password(password, user.password))
+
+                messages.error(request, 'Email atau password salah.')
+
         except Pengguna.DoesNotExist:
             messages.error(request, 'Email atau password salah.')
+
     return render(request, 'login.html')
 
 # =====================
