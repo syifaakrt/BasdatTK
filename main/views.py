@@ -104,29 +104,40 @@ def get_role(email):
 # =====================
 # LOGIN
 # =====================
+from db import get_connection
+from django.contrib.auth.hashers import check_password
+
 def login_view(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '').strip()
 
         try:
-            user = Pengguna.objects.get(email=email)
+            conn = get_connection()
+            cur = conn.cursor()
 
-            if check_password(password, user.password):
-                request.session['user_email'] = user.email
+            cur.execute(
+                "SELECT email, password FROM pengguna WHERE email = %s;",
+                (email,)
+            )
+            user = cur.fetchone()
+
+            cur.close()
+            conn.close()
+
+            if user is None:
+                messages.error(request, 'Email atau password salah.')
+            elif check_password(password, user[1]):
+                request.session['user_email'] = user[0]
                 return redirect('dashboard')
             else:
-                print(password)
-                print(user.password)
-                print("CHECK:", check_password(password, user.password))
-
                 messages.error(request, 'Email atau password salah.')
 
-        except Pengguna.DoesNotExist:
-            messages.error(request, 'Email atau password salah.')
+        except Exception as e:
+            print(f"DB error: {e}")
+            messages.error(request, 'Terjadi kesalahan server.')
 
     return render(request, 'login.html')
-
 # =====================
 # LOGOUT
 # =====================
