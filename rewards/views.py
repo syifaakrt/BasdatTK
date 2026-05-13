@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.shortcuts import redirect, render
 from django.contrib import messages
 from main.views import get_current_user, get_role
+from db import get_connection
 
 
 def member_nav_items():
@@ -14,7 +15,7 @@ def member_nav_items():
         {"label": "Beli Package", "href": "/rewards/member/beli-package/"},
         {"label": "Info Tier", "href": "/rewards/member/info-tier/"},
         {"label": "Pengaturan Profil", "href": "/profile/"},
-        {"label": "Logout", "href": "#"},
+        {"label": "Logout", "href": "/logout/"},
     ]
 
 
@@ -27,11 +28,11 @@ def staff_nav_items():
         {"label": "Kelola Mitra", "href": "/rewards/staf/kelola-mitra"},
         {"label": "Laporan Transaksi", "href": "/rewards/staf/laporan-transaksi/"},
         {"label": "Pengaturan Profil", "href": "/profile/"},
-        {"label": "Logout", "href": "#"},
+        {"label": "Logout", "href": "/logout/"},
     ]
 
 
-def base_context(role, current_page, page_title):
+def base_context(role, current_page, page_title, user_info=None):
     """
     role: "guest" | "member" | "staff"
     - "guest"  → navbar tampil tombol Masuk & Daftar (belum login)
@@ -40,25 +41,22 @@ def base_context(role, current_page, page_title):
     """
     if role == "staff":
         nav_items = staff_nav_items()
-        user_name = "Yasmin Omar"
-        user_code = "S0001"
     elif role == "member":
         nav_items = member_nav_items()
-        user_name = "Citra Dewi"
-        user_code = "M0003"
     else:
         nav_items = []
-        user_name = ""
-        user_code = ""
+
+    user_info = user_info or {}
 
     return {
         "role": role,
         "current_page": current_page,
         "page_title": page_title,
         "nav_items": nav_items,
-        "user_name": user_name,
-        "user_code": user_code,
+        "user_name": user_info.get("user_name", ""),
+        "user_code": user_info.get("user_code", ""),
     }
+
 
 # ---------------------------------------------------------------------------
 # GUEST VIEWS
@@ -76,153 +74,195 @@ def guest_home(request):
 # ---------------------------------------------------------------------------
 
 def member_redeem_hadiah(request):
-    hadiah_list = [
-        {
-            "kode": "RWD-001",
-            "nama": "Tiket Domestik PP",
-            "penyedia": "Garuda Indonesia",
-            "miles": 15000,
-            "deskripsi": "Tiket pulang-pergi rute domestik Indonesia via Garuda Indonesia",
-            "valid_start_date": "2024-01-01",
-            "program_end": "2025-12-31",
-            "is_featured": True,
-        },
-        {
-            "kode": "RWD-002",
-            "nama": "Upgrade ke Business Class",
-            "penyedia": "Garuda Indonesia",
-            "miles": 25000,
-            "deskripsi": "Upgrade dari economy class ke business class via Garuda Indonesia",
-            "valid_start_date": "2024-01-01",
-            "program_end": "2025-12-31",
-            "is_featured": False,
-        },
-        {
-            "kode": "RWD-004",
-            "nama": "Akses Lounge 1x",
-            "penyedia": "ShopeeTravel",
-            "miles": 3000,
-            "deskripsi": "Akses lounge seluruh bandara partner ShopeeTravel 1 kali masuk",
-            "valid_start_date": "2024-01-01",
-            "program_end": "2025-12-31",
-            "is_featured": False,
-        },
-        {
-            "kode": "RWD-005",
-            "nama": "Diskon Hotel 30%",
-            "penyedia": "TravelokaPartner",
-            "miles": 5000,
-            "deskripsi": "Diskon 30% pemesanan hotel melalui Traveloka partner program",
-            "valid_start_date": "2024-03-01",
-            "program_end": "2025-12-31",
-            "is_featured": False,
-        },
-        {
-            "kode": "RWD-006",
-            "nama": "Tiket Singapore Airlines",
-            "penyedia": "Singapore Airlines",
-            "miles": 20000,
-            "deskripsi": "Tiket penerbangan Singapore Airlines rute Asia tenggara",
-            "valid_start_date": "2024-01-01",
-            "program_end": "2026-01-31",
-            "is_featured": False,
-        },
-    ]
+    email = get_logged_in_email(request)
+    if not email:
+        return redirect("login")
 
-    redeem_history = [
-        {
-            "hadiah": "Akses Lounge 1x",
-            "kode_hadiah": "RWD-004",
-            "timestamp": "2024-02-05 09:15:00",
-            "miles": 3000,
-            "status": "Berhasil",
-        },
-        {
-            "hadiah": "Diskon Hotel 30%",
-            "kode_hadiah": "RWD-005",
-            "timestamp": "2024-06-03 10:00:00",
-            "miles": 5000,
-            "status": "Berhasil",
-        },
-    ]
+    member = get_member_info(email)
+    if not member:
+        return redirect("login")
 
-    selected_hadiah = hadiah_list[2]
-    member_award_miles = 5000
+    if request.method == "POST":
+        kode_hadiah = request.POST.get("kode_hadiah")
 
-    context = base_context(
-        role="member",
-        current_page="Redeem Hadiah",
-        page_title="Redeem Hadiah",
-    )
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO redeem (email_member, kode_hadiah, timestamp)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+            """, (email, kode_hadiah))
+            conn.commit()
+
+            notice = conn.notices[-1].strip() if conn.notices else "Redeem berhasil diproses."
+            messages.success(request, notice)
+
+            cur.close()
+            conn.close()
+            return redirect("/rewards/member/redeem-hadiah/")
+
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect("/rewards/member/redeem-hadiah/")
+
+    hadiah_list = fetch_all_dict("""
+        SELECT
+            h.kode_hadiah AS kode,
+            h.nama,
+            COALESCE(mi.nama_mitra, ma.nama_maskapai, 'Penyedia') AS penyedia,
+            h.miles,
+            h.deskripsi,
+            h.valid_start_date,
+            h.program_end,
+            false AS is_featured
+        FROM hadiah h
+        JOIN penyedia p ON p.id = h.id_penyedia
+        LEFT JOIN mitra mi ON mi.id_penyedia = p.id
+        LEFT JOIN maskapai ma ON ma.id_penyedia = p.id
+        WHERE CURRENT_DATE BETWEEN h.valid_start_date AND h.program_end
+        ORDER BY h.miles ASC
+    """)
+
+    redeem_history = fetch_all_dict("""
+        SELECT
+            h.nama AS hadiah,
+            h.kode_hadiah,
+            r.timestamp,
+            h.miles,
+            'Berhasil' AS status
+        FROM redeem r
+        JOIN hadiah h ON h.kode_hadiah = r.kode_hadiah
+        WHERE r.email_member = %s
+        ORDER BY r.timestamp DESC
+    """, (email,))
+
+    selected_hadiah = hadiah_list[0] if hadiah_list else {
+        "kode": "-",
+        "nama": "-",
+        "penyedia": "-",
+        "miles": 0,
+    }
+
+    context = base_context("member", "Redeem Hadiah", "Redeem Hadiah", member)
     context.update({
-        "member_award_miles": member_award_miles,
+        "member_award_miles": member["award_miles"],
         "hadiah_list": hadiah_list,
         "redeem_history": redeem_history,
         "selected_hadiah": selected_hadiah,
-        "remaining_miles_after_redeem": member_award_miles - selected_hadiah["miles"],
+        "remaining_miles_after_redeem": member["award_miles"] - selected_hadiah["miles"],
     })
     return render(request, "member/redeem_hadiah.html", context)
 
 
 def member_beli_package(request):
-    packages = [
-        {"id": "AMP-001", "jumlah_award_miles": 5000,  "harga_paket": Decimal("150000.00")},
-        {"id": "AMP-002", "jumlah_award_miles": 10000, "harga_paket": Decimal("280000.00")},
-        {"id": "AMP-003", "jumlah_award_miles": 20000, "harga_paket": Decimal("500000.00")},
-        {"id": "AMP-004", "jumlah_award_miles": 40000, "harga_paket": Decimal("900000.00")},
-        {"id": "AMP-005", "jumlah_award_miles": 75000, "harga_paket": Decimal("1500000.00")},
-    ]
+    email = get_logged_in_email(request)
+    if not email:
+        return redirect("login")
 
-    purchase_history = [
-        {
-            "id": "AMP-003",
-            "timestamp": "2024-02-01 10:15:00",
-            "jumlah_award_miles": 20000,
-            "harga_paket": Decimal("500000.00"),
-        },
-    ]
+    member = get_member_info(email)
+    if not member:
+        return redirect("login")
 
-    selected_package = packages[2]
-    member_award_miles = 5000
+    if request.method == "POST":
+        package_id = request.POST.get("package_id")
 
-    context = base_context(
-        role="member",
-        current_page="Beli Package",
-        page_title="Beli Award Miles Package",
-    )
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO member_award_miles_package
+                    (id_award_miles_package, email_member, timestamp)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+            """, (package_id, email))
+            conn.commit()
+
+            notice = conn.notices[-1].strip() if conn.notices else "Pembelian package berhasil diproses."
+            messages.success(request, notice)
+
+            cur.close()
+            conn.close()
+            return redirect("/rewards/member/beli-package/")
+
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect("/rewards/member/beli-package/")
+
+    packages = fetch_all_dict("""
+        SELECT id, jumlah_award_miles, harga_paket
+        FROM award_miles_package
+        ORDER BY jumlah_award_miles ASC
+    """)
+
+    purchase_history = fetch_all_dict("""
+        SELECT
+            amp.id,
+            mamp.timestamp,
+            amp.jumlah_award_miles,
+            amp.harga_paket
+        FROM member_award_miles_package mamp
+        JOIN award_miles_package amp ON amp.id = mamp.id_award_miles_package
+        WHERE mamp.email_member = %s
+        ORDER BY mamp.timestamp DESC
+    """, (email,))
+
+    selected_package = packages[0] if packages else {
+        "id": "-",
+        "jumlah_award_miles": 0,
+        "harga_paket": 0,
+    }
+
+    context = base_context("member", "Beli Package", "Beli Award Miles Package", member)
     context.update({
-        "member_award_miles": member_award_miles,
+        "member_award_miles": member["award_miles"],
         "packages": packages,
         "purchase_history": purchase_history,
         "selected_package": selected_package,
-        "total_after_purchase": member_award_miles + selected_package["jumlah_award_miles"],
+        "total_after_purchase": member["award_miles"] + selected_package["jumlah_award_miles"],
     })
     return render(request, "member/beli_package.html", context)
 
 
 def member_info_tier(request):
-    tier_list = [
-        {"id_tier": "T001", "nama": "Blue",     "minimal_frekuensi_terbang": 0,  "minimal_tier_miles": 0},
-        {"id_tier": "T002", "nama": "Silver",   "minimal_frekuensi_terbang": 10, "minimal_tier_miles": 25000},
-        {"id_tier": "T003", "nama": "Gold",     "minimal_frekuensi_terbang": 25, "minimal_tier_miles": 50000},
-        {"id_tier": "T004", "nama": "Platinum", "minimal_frekuensi_terbang": 50, "minimal_tier_miles": 100000},
-    ]
+    email = get_logged_in_email(request)
+    if not email:
+        return redirect("login")
+
+    member = fetch_one_dict("""
+        SELECT
+            p.first_mid_name || ' ' || p.last_name AS user_name,
+            m.nomor_member AS user_code,
+            t.nama AS current_tier,
+            m.total_miles AS tier_miles,
+            m.total_miles,
+            m.id_tier
+        FROM pengguna p
+        JOIN member m ON m.email = p.email
+        JOIN tier t ON t.id_tier = m.id_tier
+        WHERE p.email = %s
+    """, (email,))
+
+    tier_list = fetch_all_dict("""
+        SELECT id_tier, nama, minimal_frekuensi_terbang, minimal_tier_miles
+        FROM tier
+        ORDER BY minimal_tier_miles ASC
+    """)
+
+    next_tier = None
+    for tier in tier_list:
+        if tier["minimal_tier_miles"] > member["total_miles"]:
+            next_tier = tier
+            break
 
     current_member = {
-        "nama": "Citra Dewi",
-        "nomor_member": "M0003",
-        "current_tier": "Silver",
-        "tier_miles": 30000,
-        "flight_frequency": 14,
-        "next_tier": "Gold",
-        "miles_to_next_tier": 20000,
+        "nama": member["user_name"],
+        "nomor_member": member["user_code"],
+        "current_tier": member["current_tier"],
+        "tier_miles": member["tier_miles"],
+        "next_tier": next_tier["nama"] if next_tier else "Tier Maksimum",
+        "miles_to_next_tier": max(next_tier["minimal_tier_miles"] - member["total_miles"], 0) if next_tier else 0,
     }
 
-    context = base_context(
-        role="member",
-        current_page="Info Tier",
-        page_title="Informasi Tier & Keuntungan",
-    )
+    context = base_context("member", "Info Tier", "Informasi Tier & Keuntungan", member)
     context.update({
         "tier_list": tier_list,
         "current_member": current_member,
@@ -235,46 +275,109 @@ def member_info_tier(request):
 # ---------------------------------------------------------------------------
 
 def staff_laporan_transaksi(request):
-    transactions = [
-        {"tipe": "Transfer",           "member": "alice.smith@email.com",  "jumlah_miles": 2000,  "timestamp": "2024-01-10 10:30:00", "dapat_dihapus": True},
-        {"tipe": "Redeem",             "member": "citra.dewi@email.com",   "jumlah_miles": 3000,  "timestamp": "2024-02-05 09:15:00", "dapat_dihapus": True},
-        {"tipe": "Pembelian Package",  "member": "citra.dewi@email.com",   "jumlah_miles": 20000, "timestamp": "2024-02-01 10:15:00", "dapat_dihapus": True},
-        {"tipe": "Klaim Disetujui",    "member": "alice.smith@email.com",  "jumlah_miles": 4500,  "timestamp": "2024-01-10 09:00:00", "dapat_dihapus": False},
-        {"tipe": "Transfer",           "member": "bob.jones@email.com",    "jumlah_miles": 1500,  "timestamp": "2024-03-18 13:30:00", "dapat_dihapus": True},
-        {"tipe": "Redeem",             "member": "queen.park@email.com",   "jumlah_miles": 5000,  "timestamp": "2024-06-03 10:00:00", "dapat_dihapus": True},
-    ]
+    email = get_logged_in_email(request)
+    if not email:
+        return redirect("login")
 
-    top_total_miles = [
-        {"member": "peter.parker@email.com", "total_miles": 130000},
-        {"member": "frank.ocean@email.com",  "total_miles": 120000},
-        {"member": "bob.jones@email.com",    "total_miles": 115000},
-    ]
+    staff = get_staff_info(email)
+    if not staff:
+        return redirect("login")
 
-    top_activity = [
-        {"member": "citra.dewi@email.com",  "aktivitas": "Redeem",   "jumlah": 1},
-        {"member": "alice.smith@email.com", "aktivitas": "Transfer", "jumlah": 1},
-        {"member": "bob.jones@email.com",   "aktivitas": "Transfer", "jumlah": 1},
-    ]
+    transactions = fetch_all_dict("""
+        SELECT *
+        FROM (
+            SELECT
+                'Transfer' AS tipe,
+                email_member_1 AS member,
+                jumlah AS jumlah_miles,
+                timestamp,
+                true AS dapat_dihapus
+            FROM transfer
 
-    context = base_context(
-        role="staff",
-        current_page="Laporan Transaksi",
-        page_title="Laporan & Riwayat Transaksi Miles",
-    )
+            UNION ALL
+
+            SELECT
+                'Redeem' AS tipe,
+                r.email_member AS member,
+                h.miles AS jumlah_miles,
+                r.timestamp,
+                true AS dapat_dihapus
+            FROM redeem r
+            JOIN hadiah h ON h.kode_hadiah = r.kode_hadiah
+
+            UNION ALL
+
+            SELECT
+                'Pembelian Package' AS tipe,
+                mamp.email_member AS member,
+                amp.jumlah_award_miles AS jumlah_miles,
+                mamp.timestamp,
+                true AS dapat_dihapus
+            FROM member_award_miles_package mamp
+            JOIN award_miles_package amp ON amp.id = mamp.id_award_miles_package
+
+            UNION ALL
+
+            SELECT
+                'Klaim Disetujui' AS tipe,
+                email_member AS member,
+                1000 AS jumlah_miles,
+                timestamp,
+                false AS dapat_dihapus
+            FROM claim_missing_miles
+            WHERE status_penerimaan = 'Disetujui'
+        ) x
+        ORDER BY timestamp DESC
+    """)
+
+    top_total_miles = fetch_all_dict("""
+        SELECT email AS member, total_miles
+        FROM member
+        ORDER BY total_miles DESC
+        LIMIT 5
+    """)
+
+    top_activity = fetch_all_dict("""
+        SELECT member, aktivitas, jumlah
+        FROM (
+            SELECT email_member_1 AS member, 'Transfer' AS aktivitas, COUNT(*) AS jumlah
+            FROM transfer
+            GROUP BY email_member_1
+
+            UNION ALL
+
+            SELECT email_member AS member, 'Redeem' AS aktivitas, COUNT(*) AS jumlah
+            FROM redeem
+            GROUP BY email_member
+        ) x
+        ORDER BY jumlah DESC
+        LIMIT 5
+    """)
+
+    stats = fetch_one_dict("""
+        SELECT
+            COALESCE((SELECT SUM(total_miles) FROM member), 0) AS total_miles_beredar,
+            COALESCE((
+                SELECT COUNT(*)
+                FROM redeem
+                WHERE DATE_TRUNC('month', timestamp) = DATE_TRUNC('month', CURRENT_DATE)
+            ), 0) AS total_redeem_bulan_ini,
+            COALESCE((
+                SELECT COUNT(*)
+                FROM claim_missing_miles
+                WHERE status_penerimaan = 'Disetujui'
+            ), 0) AS total_klaim_disetujui
+    """)
+
+    context = base_context("staff", "Laporan Transaksi", "Laporan & Riwayat Transaksi Miles", staff)
     context.update({
         "transactions": transactions,
         "top_total_miles": top_total_miles,
         "top_activity": top_activity,
-        "stats": {
-            "total_miles_beredar": 875000,
-            "total_redeem_bulan_ini": 16,
-            "total_klaim_disetujui": 12,
-        },
+        "stats": stats,
         "filters": {
-            "selected_type": "Semua",
-            "selected_member": "Semua Member",
-            "date_start": "2024-01-01",
-            "date_end": "2024-08-31",
+            "date_start": "",
+            "date_end": "",
         },
     })
     return render(request, "staff/laporan_transaksi.html", context)
@@ -296,3 +399,46 @@ def kelola_mitra(request):
     if not user or get_role(user.email) != 'staff':
         return redirect('login')
     return render(request, 'staff/kelola_mitra.html', {'user': user, 'nav_items':staff_nav_items(), 'role': 'staff'})
+
+def fetch_all_dict(query, params=None):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(query, params or ())
+    columns = [col[0] for col in cur.description]
+    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def fetch_one_dict(query, params=None):
+    rows = fetch_all_dict(query, params)
+    return rows[0] if rows else None
+
+
+def get_logged_in_email(request):
+    return request.session.get("user_email")
+
+def get_member_info(email):
+    return fetch_one_dict("""
+        SELECT
+            p.first_mid_name || ' ' || p.last_name AS user_name,
+            m.nomor_member AS user_code,
+            m.award_miles,
+            m.total_miles,
+            m.id_tier
+        FROM pengguna p
+        JOIN member m ON m.email = p.email
+        WHERE p.email = %s
+    """, (email,))
+
+
+def get_staff_info(email):
+    return fetch_one_dict("""
+        SELECT
+            p.first_mid_name || ' ' || p.last_name AS user_name,
+            s.id_staf AS user_code
+        FROM pengguna p
+        JOIN staf s ON s.email = p.email
+        WHERE p.email = %s
+    """, (email,))
