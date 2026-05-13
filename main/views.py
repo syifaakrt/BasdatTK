@@ -5,9 +5,66 @@ from django.contrib.auth.hashers import check_password, make_password
 from .models import Pengguna, Member, Staf, ClaimMissingMiles, Redeem, Transfer, MemberAwardMilesPackage
 from django.contrib.auth.hashers import check_password
 
-def register_view(request):
-    return render(request, 'register.html')
+from django.db import DatabaseError
+from db import get_connection
 
+def register_view(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        salutation = request.POST.get('salutation')
+        first_mid_name = request.POST.get('first_mid_name')
+        last_name = request.POST.get('last_name')
+        country_code = request.POST.get('country_code')
+        mobile_number = request.POST.get('mobile_number')
+        tanggal_lahir = request.POST.get('tanggal_lahir')
+        kewarganegaraan = request.POST.get('kewarganegaraan')
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        try:
+            cur.execute("""
+                INSERT INTO pengguna (
+                    email,
+                    password,
+                    salutation,
+                    first_mid_name,
+                    last_name,
+                    country_code,
+                    mobile_number,
+                    tanggal_lahir,
+                    kewarganegaraan
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                email,
+                make_password(password),
+                salutation,
+                first_mid_name,
+                last_name,
+                country_code,
+                mobile_number,
+                tanggal_lahir,
+                kewarganegaraan
+            ))
+
+            conn.commit()
+
+            messages.success(request, "Registrasi berhasil!")
+            return redirect('login')
+
+        except Exception as e:
+            conn.rollback()
+
+            error_msg = str(e).split('\n')[0]
+            messages.error(request, error_msg)
+
+        finally:
+            cur.close()
+            conn.close()
+
+    return render(request, 'register.html')
 
 def get_session(request):
     email = request.session.get('email', 'alice.smith@email.com')
@@ -112,33 +169,29 @@ def login_view(request):
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '').strip()
 
+        conn = get_connection()
+        cur = conn.cursor()
         try:
-            conn = get_connection()
-            cur = conn.cursor()
-
             cur.execute(
-                "SELECT email, password FROM pengguna WHERE email = %s;",
+                "SELECT email, password FROM pengguna WHERE LOWER(email) = LOWER(%s);",
                 (email,)
             )
             user = cur.fetchone()
 
+            if user is None or not check_password(password, user[1]):
+                cur.execute("SELECT aeromiles.raise_login_error();")
+            
+            request.session['user_email'] = user[0]
+            return redirect('dashboard')
+
+        except Exception as e:
+            messages.error(request, str(e).split('\n')[0])
+
+        finally:
             cur.close()
             conn.close()
 
-            if user is None:
-                messages.error(request, 'Email atau password salah.')
-            elif check_password(password, user[1]):
-                request.session['user_email'] = user[0]
-                return redirect('dashboard')
-            else:
-                messages.error(request, 'Email atau password salah.')
-
-        except Exception as e:
-            print(f"DB error: {e}")
-            messages.error(request, 'Terjadi kesalahan server.')
-
     return render(request, 'login.html')
-# =====================
 # LOGOUT
 # =====================
 def logout_view(request):
