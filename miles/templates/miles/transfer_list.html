@@ -41,6 +41,22 @@
 </style>
 
 <div class="container">
+    {% if messages %}
+    <div class="flex flex-col gap-3 mb-5">
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+            <div class="bg-green-100 text-green-800 border border-green-300 px-4 py-3 rounded-lg text-sm font-semibold">
+                {{ message }}
+            </div>
+            {% else %}
+            <div class="bg-red-100 text-red-800 border border-red-300 px-4 py-3 rounded-lg text-sm font-semibold">
+                {{ message }}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="page-header">
         <h1>Transfer Miles</h1>
         <button class="btn btn-primary" onclick="openModal('modalTransfer')">+ Transfer Baru</button>
