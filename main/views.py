@@ -1,6 +1,89 @@
+from django.shortcuts import render
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth.hashers import check_password, make_password
 from .models import Pengguna, Member, Staf, ClaimMissingMiles, Redeem, Transfer, MemberAwardMilesPackage
+from django.contrib.auth.hashers import check_password
+
+def register_view(request):
+    return render(request, 'register.html')
+
+
+def get_session(request):
+    email = request.session.get('email', 'alice.smith@email.com')
+    role = request.session.get('role', 'member')
+    return email, role
+
+def pengaturan_profile(request):
+    from rewards.views import staff_nav_items, member_nav_items
+
+    user = get_current_user(request)
+    if not user:
+        return redirect('login')
+
+    role = get_role(user.email)
+
+    if role == 'member':
+        member = Member.objects.get(email_id=user.email)
+        profil = (
+            user.email,                   
+            user.salutation,              
+            user.first_mid_name,          
+            user.last_name,               
+            user.country_code,            
+            user.mobile_number,           
+            user.tanggal_lahir,           
+            user.kewarganegaraan,         
+            member.nomor_member,          
+            member.tanggal_bergabung,     
+        )
+        nav_items = member_nav_items()
+        maskapai_list = []
+
+    elif role == 'staff':
+        staf = Staf.objects.select_related('kode_maskapai').get(email_id=user.email)
+        profil = (
+            user.email,                              
+            user.salutation,                         
+            user.first_mid_name,                     
+            user.last_name,                         
+            user.country_code,                  
+            user.mobile_number,                  
+            user.tanggal_lahir,              
+            user.kewarganegaraan,                  
+            staf.id_staf,                           
+            staf.kode_maskapai.kode_maskapai,       
+        )
+        nav_items = staff_nav_items()
+        maskapai_list = list(
+            Staf.objects.select_related('kode_maskapai')
+            .values_list('kode_maskapai__kode_maskapai', 'kode_maskapai__nama_maskapai')
+            .distinct()
+        )
+
+    else:
+        return redirect('login')
+
+    return render(request, 'pengaturan_profile.html', {
+        'profil': profil,
+        'role': role,
+        'maskapai_list': maskapai_list,
+        'nav_items': nav_items,
+    })
+
+def update_profile(request):
+    email, role = get_session(request)
+    if request.method == 'POST':
+        messages.success(request, 'Profil berhasil diperbarui!')
+    return redirect('pengaturan_profile')
+
+
+def update_password(request):
+    email, role = get_session(request)
+    if request.method == 'POST':
+        messages.success(request, 'Password berhasil diubah!')
+    return redirect('pengaturan_profile')
+
 
 def get_current_user(request):
     email = request.session.get('user_email')
@@ -21,18 +104,40 @@ def get_role(email):
 # =====================
 # LOGIN
 # =====================
+from db import get_connection
+from django.contrib.auth.hashers import check_password
+
 def login_view(request):
     if request.method == 'POST':
-        email    = request.POST.get('email', '').strip()
+        email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '').strip()
-        try:
-            user = Pengguna.objects.get(email=email, password=password)
-            request.session['user_email'] = user.email
-            return redirect('dashboard')
-        except Pengguna.DoesNotExist:
-            messages.error(request, 'Email atau password salah.')
-    return render(request, 'login.html')
 
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT email, password FROM pengguna WHERE email = %s;",
+                (email,)
+            )
+            user = cur.fetchone()
+
+            cur.close()
+            conn.close()
+
+            if user is None:
+                messages.error(request, 'Email atau password salah.')
+            elif check_password(password, user[1]):
+                request.session['user_email'] = user[0]
+                return redirect('dashboard')
+            else:
+                messages.error(request, 'Email atau password salah.')
+
+        except Exception as e:
+            print(f"DB error: {e}")
+            messages.error(request, 'Terjadi kesalahan server.')
+
+    return render(request, 'login.html')
 # =====================
 # LOGOUT
 # =====================
@@ -44,12 +149,18 @@ def logout_view(request):
 # DASHBOARD
 # =====================
 def dashboard(request):
+    from rewards.views import staff_nav_items, member_nav_items
     user = get_current_user(request)
     if not user:
         return redirect('login')
+    
+    nama_lengkap = f"{user.first_mid_name} {user.last_name}"
 
     role = get_role(user.email)
-    context = {'user': user}
+    context = {'user': user,
+               'role': role,
+               'nama_lengkap':nama_lengkap,
+               }
 
     if role == 'member':
         member = Member.objects.select_related('id_tier').get(email_id=user.email)
@@ -86,6 +197,7 @@ def dashboard(request):
             'member': member,
             'tier_nama': member.id_tier.nama,
             'transaksi': transaksi,
+            'nav_items':member_nav_items()
         })
 
     elif role == 'staff':
@@ -100,24 +212,7 @@ def dashboard(request):
             'klaim_menunggu': klaim_menunggu,
             'klaim_disetujui': klaim_disetujui,
             'klaim_ditolak': klaim_ditolak,
+            'nav_items':staff_nav_items()
         })
 
     return render(request, 'dashboard.html', context)
-
-# =====================
-# KELOLA HADIAH
-# =====================
-def kelola_hadiah(request):
-    user = get_current_user(request)
-    if not user or get_role(user.email) != 'staff':
-        return redirect('login')
-    return render(request, 'kelola_hadiah.html', {'user': user})
-
-# =====================
-# KELOLA MITRA
-# =====================
-def kelola_mitra(request):
-    user = get_current_user(request)
-    if not user or get_role(user.email) != 'staff':
-        return redirect('login')
-    return render(request, 'kelola_mitra.html', {'user': user})

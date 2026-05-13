@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block meta %}
+    <title>Identitas Saya - AeroMiles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock meta %}
+
+{% block content %}
+<div class=" min-h-screen font-sans text-gray-800 p-8">
+
+    <main class="p-8 max-w-6xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">Identitas Saya</h1>
+            <button onclick="openModal('modalTambah')" class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                <i class="fa-solid fa-plus mr-1"></i> Tambah Identitas
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-white border-b border-gray-200 text-gray-500 font-semibold">
+                    <tr>
+                        <th class="px-6 py-4">No. Dokumen</th>
+                        <th class="px-6 py-4">Jenis</th>
+                        <th class="px-6 py-4">Negara</th>
+                        <th class="px-6 py-4">Terbit</th>
+                        <th class="px-6 py-4">Habis</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-bold text-gray-900">A12345678</td>
+                        <td class="px-6 py-4 font-semibold text-gray-700">Paspor</td>
+                        <td class="px-6 py-4">Indonesia</td>
+                        <td class="px-6 py-4">2020-01-15</td>
+                        <td class="px-6 py-4">2030-01-15</td>
+                        <td class="px-6 py-4">
+                            <span class="bg-[#2f855a] text-white px-3 py-1 rounded-md text-xs font-semibold">Aktif</span>
+                        </td>
+                        <td class="px-6 py-4 space-x-2">
+                            <button onclick="openModal('modalEdit')" class="text-gray-500 hover:text-blue-600 transition-colors"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="openModal('modalHapus')" class="text-gray-500 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-bold text-gray-900">3275012345678901</td>
+                        <td class="px-6 py-4 font-semibold text-gray-700">KTP</td>
+                        <td class="px-6 py-4">Indonesia</td>
+                        <td class="px-6 py-4">2019-06-01</td>
+                        <td class="px-6 py-4">2024-06-01</td>
+                        <td class="px-6 py-4">
+                            <span class="bg-[#c53030] text-white px-3 py-1 rounded-md text-xs font-semibold">Kedaluwarsa</span>
+                        </td>
+                        <td class="px-6 py-4 space-x-2">
+                            <button onclick="openModal('modalEdit')" class="text-gray-500 hover:text-blue-600 transition-colors"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="openModal('modalHapus')" class="text-gray-500 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <div id="modalTambah" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div class="p-6 flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold text-gray-900">Tambah Identitas Baru</h2>
+                <button onclick="closeModal('modalTambah')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="px-6 pb-6">
+                <form action="" method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nomor Dokumen</label>
+                        <input type="text" name="nomor_dokumen" placeholder="Contoh: SIM0001" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a]" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Jenis Dokumen</label>
+                        <div class="relative">
+                            <select name="jenis_dokumen" class="w-full border border-gray-300 rounded-md pl-3 pr-10 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer" required>
+                                <option value="KTP">KTP</option>
+                                <option value="SIM">SIM</option>
+                                <option value="Paspor">Paspor</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Negara Penerbit</label>
+                        <div class="relative">
+                            <select name="negara_penerbit" class="w-full border border-gray-300 rounded-md pl-3 pr-10 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer" required>
+                                <option value="Indonesia">Indonesia</option>
+                                <option value="Malaysia">Malaysia</option>
+                                <option value="Singapura">Singapura</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tanggal Terbit</label>
+                            <input type="date" name="tanggal_terbit" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0c3b7a]" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tanggal Habis</label>
+                            <input type="date" name="tanggal_habis" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0c3b7a]" required>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEdit" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div class="p-6 flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold text-gray-900">Edit Identitas</h2>
+                <button onclick="closeModal('modalEdit')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="px-6 pb-6">
+                <form action="" method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nomor Dokumen</label>
+                        <input type="text" name="nomor_dokumen" value="SIM0001" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a]" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Jenis Dokumen</label>
+                        <div class="relative">
+                            <select name="jenis_dokumen" class="w-full border border-gray-300 rounded-md pl-3 pr-10 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer" required>
+                                <option value="KTP">KTP</option>
+                                <option value="SIM" selected>SIM</option>
+                                <option value="Paspor">Paspor</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Negara Penerbit</label>
+                        <div class="relative">
+                            <select name="negara_penerbit" class="w-full border border-gray-300 rounded-md pl-3 pr-10 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer" required>
+                                <option value="Indonesia" selected>Indonesia</option>
+                                <option value="Malaysia">Malaysia</option>
+                                <option value="Singapura">Singapura</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tanggal Terbit</label>
+                            <input type="date" name="tanggal_terbit" value="2026-04-12" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0c3b7a]" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tanggal Habis</label>
+                            <input type="date" name="tanggal_habis" value="2031-04-25" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0c3b7a]" required>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalHapus" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center">
+            <h2 class="text-xl font-bold text-gray-900 mb-2 text-left">Hapus Identitas?</h2>
+            <p class="text-gray-500 text-sm mb-6 text-left leading-relaxed">
+                Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeModal('modalHapus')" class="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Batal</button>
+                
+                <form action="" method="POST" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors">Hapus</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // Tutup modal kalau klik area luar box modal
+    window.onclick = function(event) {
+        const modals = ['modalTambah', 'modalEdit', 'modalHapus'];
+        modals.forEach(id => {
+            const modalElement = document.getElementById(id);
+            if (event.target == modalElement) {
+                closeModal(id);
+            }
+        });
+    }
+</script>
+{% endblock content %}

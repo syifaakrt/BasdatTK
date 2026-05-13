@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Info Tier | AeroMiles{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="mb-8">
+    <p class="text-xs font-bold uppercase tracking-widest text-[#1c4f87] mb-2">Member Feature</p>
+    <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2">Informasi Tier & Keuntungan</h1>
+    <p class="text-gray-500 max-w-xl leading-relaxed">
+        Lihat semua tier AeroMiles, tier member saat ini, dan kebutuhan miles untuk naik tier berikutnya.
+    </p>
+</div>
+
+<!-- Summary Panel -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+    <div class="bg-[#0b1f3a] text-white rounded-2xl shadow p-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-white/60 block mb-2">Member</span>
+        <strong class="block text-xl font-bold mb-1">{{ current_member.nama }}</strong>
+        <p class="text-white/60 text-sm">{{ current_member.nomor_member }}</p>
+    </div>
+    <div class="bg-white border border-gray-100 rounded-2xl shadow p-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-gray-400 block mb-2">Tier Saat Ini</span>
+        <strong class="block text-xl font-bold text-[#0b1f3a] mb-1">{{ current_member.current_tier }}</strong>
+        <p class="text-gray-500 text-sm">{{ current_member.tier_miles }} tier miles</p>
+    </div>
+    <div class="bg-white border border-gray-100 rounded-2xl shadow p-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-gray-400 block mb-2">Tier Berikutnya</span>
+        <strong class="block text-xl font-bold text-[#0b1f3a] mb-1">{{ current_member.next_tier }}</strong>
+        <p class="text-gray-500 text-sm">{{ current_member.miles_to_next_tier }} miles lagi</p>
+    </div>
+</div>
+
+<!-- Tier List -->
+<div class="bg-white border border-gray-100 rounded-2xl shadow p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-[#0b1f3a]">Daftar Tier</h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {% for tier in tier_list %}
+        <article class="border rounded-xl p-5 transition
+            {% if tier.nama == current_member.current_tier %}
+                border-[#1c4f87]/40 bg-[#edf4fb]
+            {% else %}
+                border-gray-100 bg-white hover:border-[#1c4f87]/20
+            {% endif %}">
+            <p class="text-xs font-bold uppercase tracking-widest text-[#1c4f87] mb-1">{{ tier.id_tier }}</p>
+            <h3 class="text-xl font-bold text-[#0b1f3a] mb-4">{{ tier.nama }}</h3>
+
+            <div class="space-y-3 mb-4">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500">Min. Frekuensi Terbang</span>
+                    <strong class="text-[#0b1f3a]">{{ tier.minimal_frekuensi_terbang }}x</strong>
+                </div>
+                <div class="w-full h-px bg-gray-100"></div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500">Min. Tier Miles</span>
+                    <strong class="text-[#0b1f3a]">{{ tier.minimal_tier_miles }}</strong>
+                </div>
+            </div>
+
+            {% if tier.nama == current_member.current_tier %}
+                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-[#1c4f87]/10 text-[#1c4f87]">
+                    ✓ Tier Saat Ini
+                </span>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block meta %}
+    <title>Daftar Akun Baru - AeroMiles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock meta %}
+
+{% block content %}
+<div class="bg-[#f8f9fc] min-h-screen flex items-center justify-center py-10 px-4 font-sans">
+    
+    <div class="max-w-[700px] w-full">
+        <div class="text-center mb-8">
+            <div class="w-12 h-12 bg-[#0c3b7a] text-white rounded-xl flex items-center justify-center text-xl mx-auto mb-4 shadow-md">
+                <i class="fa-solid fa-plane"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Daftar Akun Baru</h1>
+            <p class="text-gray-500 text-sm">Bergabung dengan program AeroMiles</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            
+            <form action="" method="POST" id="registerForm">
+                {% csrf_token %} 
+
+                <div class="mb-6">
+                    <h2 class="text-sm font-bold text-gray-800 mb-1">Registrasi</h2>
+                    <p class="text-xs text-gray-500 mb-4">Pilih peran dan lengkapi data Anda</p>
+
+                    <div class="flex bg-slate-100 p-1 rounded-lg mb-6">
+                        <button type="button" id="btnMember" onclick="switchRole('member')" class="flex-1 bg-white shadow-sm text-sm font-semibold py-2 rounded-md text-gray-800 text-center transition-all">Member</button>
+                        <button type="button" id="btnStaf" onclick="switchRole('staf')" class="flex-1 text-sm font-medium py-2 rounded-md text-gray-500 text-center transition-all hover:text-gray-700">Staf</button>
+                        
+                        <input type="hidden" name="role" id="roleInput" value="member">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+                        <input type="email" name="email" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="password" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Konfirmasi Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="confirm_password" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                        </div>
+                    </div>
+
+                    <h2 class="text-sm font-bold text-gray-800 mb-4">Data Pribadi</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Salutation <span class="text-red-500">*</span></label>
+                            <select name="salutation" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                                <option value="" disabled selected>Pilih</option>
+                                <option value="Mr.">Mr.</option>
+                                <option value="Mrs.">Mrs.</option>
+                                <option value="Ms.">Ms.</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Depan <span class="text-red-500">*</span></label>
+                            <input type="text" name="first_mid_name" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Belakang <span class="text-red-500">*</span></label>
+                            <input type="text" name="last_name" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Kewarganegaraan <span class="text-red-500">*</span></label>
+                            <select name="kewarganegaraan" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                                <option value="" disabled selected>Pilih negara</option>
+                                <option value="Indonesia">Indonesia</option>
+                                <option value="Malaysia">Malaysia</option>
+                                <option value="Singapura">Singapura</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Country Code <span class="text-red-500">*</span></label>
+                            <select name="country_code" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                                <option value="+62" selected>+62</option>
+                                <option value="+60">+60</option>
+                                <option value="+65">+65</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nomor HP <span class="text-red-500">*</span></label>
+                            <input type="text" name="mobile_number" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-[calc(50%-0.5rem)] mb-6">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Tanggal Lahir <span class="text-red-500">*</span></label>
+                        <input type="date" name="tanggal_lahir" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]" required>
+                    </div>
+
+                    <div id="stafSection" class="hidden">
+                        <hr class="border-gray-100 mb-6">
+                        <h2 class="text-sm font-bold text-gray-800 mb-4">Data Staf</h2>
+                        
+                        <div class="mb-8">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Kode Maskapai <span class="text-red-500">*</span></label>
+                            <select name="kode_maskapai" id="maskapaiInput" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] focus:ring-1 focus:ring-[#0c3b7a]">
+                                <option value="" disabled selected>Pilih maskapai</option>
+                                <option value="GA">Garuda Indonesia (GA)</option>
+                                <option value="JT">Lion Air (JT)</option>
+                                <option value="QZ">AirAsia (QZ)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-[#0c3b7a] hover:bg-[#0a2f63] text-white font-medium py-3 rounded-lg text-sm transition-colors mt-2">
+                        Daftar
+                    </button>
+
+                </div>
+            </form>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchRole(role) {
+        const btnMember = document.getElementById('btnMember');
+        const btnStaf = document.getElementById('btnStaf');
+        const roleInput = document.getElementById('roleInput');
+        const stafSection = document.getElementById('stafSection');
+        const maskapaiInput = document.getElementById('maskapaiInput');
+
+        const activeClass = 'bg-white shadow-sm text-gray-800 font-semibold';
+        const inactiveClass = 'text-gray-500 font-medium hover:text-gray-700';
+
+        if (role === 'staf') {
+            roleInput.value = 'staf';
+
+            btnStaf.className = `flex-1 py-2 rounded-md text-center transition-all ${activeClass}`;
+            btnMember.className = `flex-1 py-2 rounded-md text-center transition-all ${inactiveClass}`;
+
+            stafSection.classList.remove('hidden');
+            maskapaiInput.setAttribute('required', 'true');
+
+        } else {
+            roleInput.value = 'member';
+
+            btnMember.className = `flex-1 py-2 rounded-md text-center transition-all ${activeClass}`;
+            btnStaf.className = `flex-1 py-2 rounded-md text-center transition-all ${inactiveClass}`;
+
+            stafSection.classList.add('hidden');
+            maskapaiInput.removeAttribute('required');
+        }
+    }
+</script>
+{% endblock content %}

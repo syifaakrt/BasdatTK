@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .page-header h1 { font-size: 1.4rem; color: #0f2044; font-weight: 700; }
+    .award-info { font-size: 0.9rem; color: #555; margin-bottom: 24px; }
+    .award-info strong { color: #0f2044; }
+    .btn { padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+    .btn-primary { background: #0f2044; color: white; }
+    .btn-secondary { background: #f0f0f0; color: #333; }
+    .section-title { font-size: 1rem; font-weight: 700; color: #0f2044; margin-bottom: 14px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { padding: 13px 16px; text-align: left; font-size: 0.8rem; font-weight: 600; color: #666; border-bottom: 2px solid #f0f0f0; }
+    tbody td { padding: 13px 16px; font-size: 0.85rem; border-bottom: 1px solid #f7f7f7; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+    .member-email { font-size: 0.75rem; color: #888; }
+    .miles-kirim { color: #e74c3c; font-weight: 700; }
+    .miles-terima { color: #27ae60; font-weight: 700; }
+    .badge-kirim { background: #f0f0f0; color: #333; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .badge-terima { background: #d1e7dd; color: #0f5132; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .lock-icon { color: #bbb; font-size: 0.9rem; }
+    .empty-state { text-align: center; padding: 48px; color: #aaa; font-size: 0.9rem; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; border-radius: 14px; padding: 28px; width: 420px; max-width: 95%; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+    .modal-header h2 { font-size: 1.05rem; color: #0f2044; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-group label { font-size: 0.82rem; font-weight: 600; color: #555; }
+    .form-group input, .form-group textarea {
+        padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px;
+        font-size: 0.88rem; outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: #0f2044; }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .modal-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
+</style>
+
+<div class="container">
+    <div class="page-header">
+        <h1>Transfer Miles</h1>
+        <button class="btn btn-primary" onclick="openModal('modalTransfer')">+ Transfer Baru</button>
+    </div>
+    <div class="award-info">Award Miles tersedia: <strong>{{ award_miles|floatformat:"0" }}</strong></div>
+
+    <div class="section-title">Riwayat Transfer</div>
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Waktu</th>
+                    <th>Member</th>
+                    <th>Jumlah Miles</th>
+                    <th>Catatan</th>
+                    <th>Tipe</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transfers %}
+                <tr>
+                    <td>{{ t.0|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <div>{{ t.1 }}</div>
+                        <div class="member-email">{{ t.2 }}</div>
+                    </td>
+                    <td>
+                        {% if t.5 == 'Kirim' %}
+                        <span class="miles-kirim">-{{ t.3 }}</span>
+                        {% else %}
+                        <span class="miles-terima">+{{ t.3 }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.4|default:"-" }}</td>
+                    <td>
+                        {% if t.5 == 'Kirim' %}
+                        <span class="badge-kirim">Kirim</span>
+                        {% else %}
+                        <span class="badge-terima">Terima</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="lock-icon">🔒</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty-state">Belum ada riwayat transfer.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Transfer -->
+<div class="modal-overlay" id="modalTransfer">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Transfer Miles</h2>
+            <button class="modal-close" onclick="closeModal('modalTransfer')">✕</button>
+        </div>
+        <form method="POST" action="{% url 'miles:transfer_create' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Email Penerima</label>
+                <input type="email" name="email_penerima" placeholder="email@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Jumlah Miles</label>
+                <input type="number" name="jumlah" min="1" max="{{ award_miles }}" required>
+            </div>
+            <div class="form-group">
+                <label>Catatan (opsional)</label>
+                <textarea name="catatan" placeholder="Tulis catatan..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary" style="width:100%;">Transfer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+</script>
+{% endblock %}

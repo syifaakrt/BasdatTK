@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block title %}Kelola Mitra - AeroMiles{% endblock %}
-{% block nav_mitra %}bg-[#1a3a6e] !text-white{% endblock %}
 
 {% block content %}
 
@@ -98,7 +97,7 @@ function openModal() { document.getElementById('modalForm').classList.remove('hi
 function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('modalForm').classList.remove('flex'); }
 document.getElementById('modalForm').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 </script>
-<script src="{% static 'main/js/script_mitra.js' %}"></script>
+<script src="{% static 'rewards/js/script_mitra.js' %}"></script>
 <script>
 const _origOpenCreate = openCreate;
 const _origOpenEdit = openEdit;

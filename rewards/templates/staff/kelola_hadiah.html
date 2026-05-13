@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block title %}Kelola Hadiah - AeroMiles{% endblock %}
-{% block nav_hadiah %}bg-[#1a3a6e] !text-white{% endblock %}
 
 {% block content %}
 
@@ -113,7 +112,7 @@ function openModal() { document.getElementById('modalForm').classList.remove('hi
 function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('modalForm').classList.remove('flex'); }
 document.getElementById('modalForm').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 </script>
-<script src="{% static 'main/js/script.js' %}"></script>
+<script src="{% static 'rewards/js/script.js' %}"></script>
 <script>
 // Patch openCreate and openEdit to use new modal helpers
 const _origOpenCreate = openCreate;
