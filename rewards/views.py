@@ -1,6 +1,10 @@
+import json
 from decimal import Decimal
 from django.shortcuts import redirect, render
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from main.views import get_current_user, get_role
 from db import get_connection
 
@@ -62,17 +66,13 @@ def base_context(role, current_page, page_title, user_info=None):
 # GUEST VIEWS
 # ---------------------------------------------------------------------------
 def guest_home(request):
-    context = base_context(
-        role="guest",
-        current_page="Redeem Hadiah",
-        page_title="Guest View",
-    )
+    context = base_context(role="guest", current_page="Redeem Hadiah", page_title="Guest View")
     return render(request, "member/redeem_hadiah.html", context)
+
 
 # ---------------------------------------------------------------------------
 # MEMBER VIEWS
 # ---------------------------------------------------------------------------
-
 def member_redeem_hadiah(request):
     email = get_logged_in_email(request)
     if not email:
@@ -273,7 +273,6 @@ def member_info_tier(request):
 # ---------------------------------------------------------------------------
 # STAFF VIEWS
 # ---------------------------------------------------------------------------
-
 def staff_laporan_transaksi(request):
     email = get_logged_in_email(request)
     if not email:
@@ -382,18 +381,148 @@ def staff_laporan_transaksi(request):
     })
     return render(request, "staff/laporan_transaksi.html", context)
 
-# =====================
-# KELOLA HADIAH
-# =====================
+
+# ---------------------------------------------------------------------------
+# KELOLA HADIAH - PAGE
+# ---------------------------------------------------------------------------
 def kelola_hadiah(request):
     user = get_current_user(request)
     if not user or get_role(user.email) != 'staff':
         return redirect('login')
-    return render(request, 'staff/kelola_hadiah.html', {'user': user, 'nav_items':staff_nav_items(), 'role': 'staff'})
+    return render(request, 'staff/kelola_hadiah.html', {
+        'user': user,
+        'nav_items': staff_nav_items(),
+        'role': 'staff'
+    })
 
-# =====================
-# KELOLA MITRA
-# =====================
+
+# ---------------------------------------------------------------------------
+# KELOLA HADIAH - API
+# ---------------------------------------------------------------------------
+def api_hadiah_list(request):
+    """GET /rewards/api/hadiah/ → list semua hadiah"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT kode_hadiah, nama, miles, deskripsi, valid_start_date, program_end
+            FROM hadiah
+            ORDER BY kode_hadiah
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        data = [
+            {
+                "kode": r[0],
+                "nama": r[1],
+                "miles": r[2],
+                "deskripsi": r[3],
+                "mulai": str(r[4]),
+                "akhir": str(r[5]),
+            }
+            for r in rows
+        ]
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def api_hadiah_create(request):
+    """POST /rewards/api/hadiah/create/ → tambah hadiah baru"""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        body = json.loads(request.body)
+        nama     = body.get("nama")
+        miles    = body.get("miles")
+        deskripsi = body.get("deskripsi")
+        mulai    = body.get("mulai")
+        akhir    = body.get("akhir")
+
+        if not all([nama, miles, deskripsi, mulai, akhir]):
+            return JsonResponse({"error": "Semua field wajib diisi"}, status=400)
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # Generate kode otomatis: ambil max kode, increment
+        cur.execute("SELECT kode_hadiah FROM hadiah ORDER BY kode_hadiah DESC LIMIT 1")
+        last = cur.fetchone()
+        if last:
+            num = int(last[0].replace("RWD-", "")) + 1
+        else:
+            num = 1
+        kode = f"RWD-{str(num).zfill(3)}"
+
+        cur.execute("""
+            INSERT INTO hadiah (kode_hadiah, nama, miles, deskripsi, valid_start_date, program_end, id_penyedia)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (kode, nama, miles, deskripsi, mulai, akhir, body.get("idPenyedia")))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JsonResponse({"success": True, "kode": kode})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def api_hadiah_update(request, kode):
+    """POST /rewards/api/hadiah/update/<kode>/ → edit hadiah"""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        body = json.loads(request.body)
+        nama     = body.get("nama")
+        miles    = body.get("miles")
+        deskripsi = body.get("deskripsi")
+        mulai    = body.get("mulai")
+        akhir    = body.get("akhir")
+
+        if not all([nama, miles, deskripsi, mulai, akhir]):
+            return JsonResponse({"error": "Semua field wajib diisi"}, status=400)
+
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE hadiah
+            SET nama=%s, miles=%s, deskripsi=%s, valid_start_date=%s, program_end=%s
+            WHERE kode_hadiah=%s
+        """, (nama, miles, deskripsi, mulai, akhir, kode))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def api_hadiah_delete(request, kode):
+    """POST /rewards/api/hadiah/delete/<kode>/ → hapus hadiah"""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM hadiah WHERE kode_hadiah=%s", (kode,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# KELOLA MITRA - PAGE
+# ---------------------------------------------------------------------------
 def kelola_mitra(request):
     user = get_current_user(request)
     if not user or get_role(user.email) != 'staff':

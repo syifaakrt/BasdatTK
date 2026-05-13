@@ -1,20 +1,8 @@
 // =====================
-// DUMMY DATA
+// STATE
 // =====================
-let hadiahData = [
-  { kode: 'RWD-001', nama: 'Tiket Domestik PP',          miles: 15000, deskripsi: 'Tiket pulang-pergi rute domestik Indonesia via Garuda Indonesia',  mulai: '2024-01-01', akhir: '2025-12-31' },
-  { kode: 'RWD-002', nama: 'Upgrade ke Business Class',  miles: 25000, deskripsi: 'Upgrade dari economy class ke business class via Garuda Indonesia', mulai: '2024-01-01', akhir: '2025-12-31' },
-  { kode: 'RWD-003', nama: 'Voucher Hotel Rp 500.000',   miles: 8000,  deskripsi: 'Voucher menginap 1 malam di Hotel Indonesia Kempinski Jakarta',     mulai: '2024-06-01', akhir: '2025-06-30' },
-  { kode: 'RWD-004', nama: 'Akses Lounge 1x',            miles: 3000,  deskripsi: 'Akses lounge seluruh bandara partner ShopeeTravel 1 kali masuk',    mulai: '2024-01-01', akhir: '2025-12-31' },
-  { kode: 'RWD-005', nama: 'Diskon Hotel 30%',           miles: 5000,  deskripsi: 'Diskon 30% pemesanan hotel melalui Traveloka partner program',       mulai: '2024-03-01', akhir: '2025-12-31' },
-  { kode: 'RWD-006', nama: 'Tiket Singapore Airlines',   miles: 20000, deskripsi: 'Tiket penerbangan Singapore Airlines rute Asia Tenggara',            mulai: '2024-01-01', akhir: '2026-01-31' },
-  { kode: 'RWD-007', nama: 'Free Bagasi 10kg SQ',        miles: 6000,  deskripsi: 'Extra bagasi 10kg untuk penerbangan Singapore Airlines',             mulai: '2024-04-01', akhir: '2025-09-30' },
-  { kode: 'RWD-008', nama: 'Voucher Agoda Rp 300.000',   miles: 4000,  deskripsi: 'Voucher pemesanan hotel melalui Agoda senilai Rp 300.000',           mulai: '2024-07-01', akhir: '2025-07-31' },
-  { kode: 'RWD-009', nama: 'Tiket Pesawat TiketPartner', miles: 12000, deskripsi: 'Tiket pesawat domestik maupun internasional via Tiket.com',          mulai: '2024-01-01', akhir: '2025-12-31' },
-  { kode: 'RWD-010', nama: 'Akses Lounge Premium MH',    miles: 7000,  deskripsi: 'Akses Malaysia Airlines Golden Lounge di Kuala Lumpur',              mulai: '2024-02-01', akhir: '2025-12-31' },
-];
-
-let editIndex = null;
+let hadiahData = [];
+let editKode = null;
 
 // =====================
 // HELPERS
@@ -27,16 +15,15 @@ function formatMiles(n) {
   return Number(n).toLocaleString('id-ID');
 }
 
-function generateKode() {
-  const max = hadiahData.reduce((acc, h) => {
-    const num = parseInt(h.kode.replace('RWD-', ''));
-    return num > acc ? num : acc;
-  }, 0);
-  return 'RWD-' + String(max + 1).padStart(3, '0');
+function getCsrfToken() {
+  return document.cookie.split(';')
+    .map(c => c.trim())
+    .find(c => c.startsWith('csrftoken='))
+    ?.split('=')[1] || '';
 }
 
 // =====================
-// MODAL HELPERS (Tailwind)
+// MODAL HELPERS
 // =====================
 function showModal() {
   const m = document.getElementById('modalForm');
@@ -81,11 +68,7 @@ function renderTable(data) {
 
   source.forEach((h) => {
     const status = getStatus(h.akhir);
-    const realIndex = hadiahData.indexOf(h);
-    const badgeClass = status === 'Aktif'
-      ? 'bg-green-100 text-green-800'
-      : 'bg-red-100 text-red-800';
-
+    const badgeClass = status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
     tbody.innerHTML += `
       <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50">
         <td class="px-3.5 py-2.5 text-xs text-gray-400">${h.kode}</td>
@@ -101,9 +84,9 @@ function renderTable(data) {
         </td>
         <td class="px-3.5 py-2.5">
           <div class="flex gap-1.5 items-center">
-            <button onclick="openEdit(${realIndex})" title="Edit"
+            <button onclick="openEdit('${h.kode}')" title="Edit"
               class="text-blue-500 hover:bg-blue-50 text-base px-1.5 py-0.5 rounded transition">✎</button>
-            <button onclick="deleteHadiah(${realIndex})" title="Hapus"
+            <button onclick="deleteHadiah('${h.kode}', '${h.nama}')" title="Hapus"
               class="text-red-500 hover:bg-red-50 text-base px-1.5 py-0.5 rounded transition">✕</button>
           </div>
         </td>
@@ -118,21 +101,37 @@ function renderTable(data) {
 function filterTable() {
   const search = document.getElementById('searchInput').value.toLowerCase();
   const status = document.getElementById('filterStatus').value;
-
   const filtered = hadiahData.filter(h => {
     const matchSearch = h.nama.toLowerCase().includes(search) || h.deskripsi.toLowerCase().includes(search);
     const matchStatus = status === '' || getStatus(h.akhir) === status;
     return matchSearch && matchStatus;
   });
-
   renderTable(filtered);
+}
+
+// =====================
+// FETCH DATA FROM API
+// =====================
+async function loadHadiah() {
+  try {
+    const res = await fetch('/rewards/api/hadiah/');
+    const data = await res.json();
+    if (res.ok) {
+      hadiahData = data;
+      filterTable();
+    } else {
+      alert('Gagal memuat data: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Gagal konek ke server: ' + e.message);
+  }
 }
 
 // =====================
 // MODAL OPEN
 // =====================
 function openCreate() {
-  editIndex = null;
+  editKode = null;
   document.getElementById('modalTitle').textContent = 'Tambah Hadiah';
   document.getElementById('nama').value = '';
   document.getElementById('miles').value = '';
@@ -142,9 +141,10 @@ function openCreate() {
   showModal();
 }
 
-function openEdit(index) {
-  editIndex = index;
-  const h = hadiahData[index];
+function openEdit(kode) {
+  const h = hadiahData.find(h => h.kode === kode);
+  if (!h) return;
+  editKode = kode;
   document.getElementById('modalTitle').textContent = 'Edit Hadiah';
   document.getElementById('nama').value = h.nama;
   document.getElementById('miles').value = h.miles;
@@ -155,9 +155,9 @@ function openEdit(index) {
 }
 
 // =====================
-// SAVE
+// SAVE (Create / Update)
 // =====================
-function saveHadiah() {
+async function saveHadiah() {
   const nama      = document.getElementById('nama').value.trim();
   const miles     = document.getElementById('miles').value.trim();
   const deskripsi = document.getElementById('deskripsi').value.trim();
@@ -169,31 +169,59 @@ function saveHadiah() {
     return;
   }
 
-  const data = { kode: '', nama, miles: parseInt(miles), deskripsi, mulai, akhir };
+  const idPenyedia = document.getElementById('idPenyedia').value.trim();
+  if (!nama || !miles || !deskripsi || !mulai || !akhir || !idPenyedia) {
+    alert('Harap lengkapi semua field!');
+    return;
+   }
+  const payload = { nama, miles: parseInt(miles), deskripsi, mulai, akhir, idPenyedia: parseInt(idPenyedia) };
+  const url = editKode
+    ? `/rewards/api/hadiah/update/${editKode}/`
+    : `/rewards/api/hadiah/create/`;
 
-  if (editIndex === null) {
-    data.kode = generateKode();
-    hadiahData.push(data);
-  } else {
-    data.kode = hadiahData[editIndex].kode;
-    hadiahData[editIndex] = data;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      closeModal();
+      await loadHadiah();
+    } else {
+      alert('Gagal menyimpan: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Gagal konek ke server: ' + e.message);
   }
-
-  closeModal();
-  filterTable();
 }
 
 // =====================
 // DELETE
 // =====================
-function deleteHadiah(index) {
-  if (confirm(`Hapus hadiah "${hadiahData[index].nama}"?`)) {
-    hadiahData.splice(index, 1);
-    filterTable();
+async function deleteHadiah(kode, nama) {
+  if (!confirm(`Hapus hadiah "${nama}"?`)) return;
+  try {
+    const res = await fetch(`/rewards/api/hadiah/delete/${kode}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrfToken() },
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      await loadHadiah();
+    } else {
+      alert('Gagal menghapus: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Gagal konek ke server: ' + e.message);
   }
 }
 
 // =====================
 // INIT
 // =====================
-renderTable();
+loadHadiah();

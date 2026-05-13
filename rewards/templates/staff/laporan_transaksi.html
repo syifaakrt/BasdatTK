@@ -32,6 +32,16 @@
     </div>
 </div>
 
+{% if sp_message %}
+<div class="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+    <span class="text-green-600 text-lg mt-0.5">✓</span>
+    <div>
+        <p class="text-sm font-bold text-green-800 mb-0.5">Stored Procedure Berhasil Dijalankan</p>
+        <p class="text-sm text-green-700">{{ sp_message }}</p>
+    </div>
+</div>
+{% endif %}
+
 <!-- Filter -->
 <div class="bg-white border border-gray-100 rounded-2xl shadow p-6 mb-6">
     <div class="flex items-center justify-between mb-5">
@@ -135,23 +145,31 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="bg-white border border-gray-100 rounded-2xl shadow p-6">
         <div class="flex items-center justify-between mb-5">
-            <h2 class="text-lg font-bold text-[#0b1f3a]">Top Member by Total Miles</h2>
+            <h2 class="text-lg font-bold text-[#0b1f3a]">Top 5 Member by Total Miles</h2>
+            <span class="px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-bold">via Stored Procedure</span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm min-w-[320px]">
                 <thead>
                     <tr class="bg-[#0b1f3a] text-white">
-                        <th class="px-4 py-3 text-left text-xs font-bold">Member</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold">Nama</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold">Email</th>
                         <th class="px-4 py-3 text-left text-xs font-bold">Total Miles</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in top_total_miles %}
                     <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
-                        <td class="px-4 py-3 text-gray-600 text-xs">{{ item.member }}</td>
+                        <td class="px-4 py-3 font-bold text-[#1c4f87]">{{ item.peringkat }}</td>
+                        <td class="px-4 py-3 font-medium text-[#0b1f3a]">{{ item.nama_lengkap }}</td>
+                        <td class="px-4 py-3 text-gray-500 text-xs">{{ item.member }}</td>
                         <td class="px-4 py-3 font-bold text-[#0b1f3a]">{{ item.total_miles }}</td>
                     </tr>
                     {% endfor %}
+                    {% if not top_total_miles %}
+                    <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400 text-sm">Tidak ada data.</td></tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>

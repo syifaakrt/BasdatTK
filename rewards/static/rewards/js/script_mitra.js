@@ -1,15 +1,8 @@
 // =====================
-// DUMMY DATA
+// STATE
 // =====================
-let mitraData = [
-  { emailMitra: 'partner@traveloka.com',      idPenyedia: 6,  namaMitra: 'TravelokaPartner',         tanggalKerjaSama: '2022-01-15' },
-  { emailMitra: 'partner@hotelindonesia.com', idPenyedia: 7,  namaMitra: 'Hotel Indonesia Kempinski', tanggalKerjaSama: '2021-06-01' },
-  { emailMitra: 'partner@shopeetravel.com',   idPenyedia: 8,  namaMitra: 'ShopeeTravel',              tanggalKerjaSama: '2023-03-10' },
-  { emailMitra: 'partner@agoda.com',          idPenyedia: 9,  namaMitra: 'AgodaPartner',              tanggalKerjaSama: '2022-09-20' },
-  { emailMitra: 'partner@tiket.com',          idPenyedia: 10, namaMitra: 'TiketPartner',              tanggalKerjaSama: '2023-07-05' },
-];
-
-let editIndex = null;
+let mitraData = [];
+let editEmail = null;
 
 // =====================
 // HELPERS
@@ -22,6 +15,13 @@ function getDurasi(tanggal) {
   const months = Math.floor((diffDays % 365) / 30);
   if (years > 0) return `${years} thn ${months} bln`;
   return `${months} bulan`;
+}
+
+function getCsrfToken() {
+  return document.cookie.split(';')
+    .map(c => c.trim())
+    .find(c => c.startsWith('csrftoken='))
+    ?.split('=')[1] || '';
 }
 
 function populatePenyediaFilter() {
@@ -37,7 +37,7 @@ function populatePenyediaFilter() {
 }
 
 // =====================
-// MODAL HELPERS (Tailwind)
+// MODAL HELPERS
 // =====================
 function showModal() {
   const m = document.getElementById('modalForm');
@@ -79,7 +79,6 @@ function renderTable(data) {
   }
 
   source.forEach((m) => {
-    const realIndex = mitraData.indexOf(m);
     const durasi = getDurasi(m.tanggalKerjaSama);
     tbody.innerHTML += `
       <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50">
@@ -92,9 +91,9 @@ function renderTable(data) {
         </td>
         <td class="px-3.5 py-2.5">
           <div class="flex gap-1.5 items-center">
-            <button onclick="openEdit(${realIndex})" title="Edit"
+            <button onclick="openEdit('${m.emailMitra}')" title="Edit"
               class="text-blue-500 hover:bg-blue-50 text-base px-1.5 py-0.5 rounded transition">✎</button>
-            <button onclick="deleteMitra(${realIndex})" title="Hapus"
+            <button onclick="deleteMitra('${m.emailMitra}', '${m.namaMitra}')" title="Hapus"
               class="text-red-500 hover:bg-red-50 text-base px-1.5 py-0.5 rounded transition">✕</button>
           </div>
         </td>
@@ -109,44 +108,66 @@ function renderTable(data) {
 function filterTable() {
   const search   = document.getElementById('searchInput').value.toLowerCase();
   const penyedia = document.getElementById('filterPenyedia').value;
-
   const filtered = mitraData.filter(m => {
     const matchSearch   = m.namaMitra.toLowerCase().includes(search) || m.emailMitra.toLowerCase().includes(search);
     const matchPenyedia = penyedia === '' || String(m.idPenyedia) === penyedia;
     return matchSearch && matchPenyedia;
   });
-
   renderTable(filtered);
+}
+
+// =====================
+// FETCH DATA FROM API
+// =====================
+async function loadMitra() {
+  try {
+    const res = await fetch('/rewards/api/mitra/');
+    const data = await res.json();
+    if (res.ok) {
+      mitraData = data;
+      populatePenyediaFilter();
+      filterTable();
+    } else {
+      alert('Gagal memuat data: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Gagal konek ke server: ' + e.message);
+  }
 }
 
 // =====================
 // MODAL OPEN
 // =====================
 function openCreate() {
-  editIndex = null;
-  document.getElementById('modalTitle').textContent   = 'Tambah Mitra';
-  document.getElementById('emailMitra').value         = '';
-  document.getElementById('idPenyedia').value         = '';
-  document.getElementById('namaMitra').value          = '';
-  document.getElementById('tanggalKerjaSama').value   = '';
+  editEmail = null;
+  document.getElementById('modalTitle').textContent  = 'Tambah Mitra';
+  document.getElementById('emailMitra').value        = '';
+  document.getElementById('idPenyedia').value        = '';
+  document.getElementById('namaMitra').value         = '';
+  document.getElementById('tanggalKerjaSama').value  = '';
+  // Enable email field for create
+  document.getElementById('emailMitra').disabled = false;
   showModal();
 }
 
-function openEdit(index) {
-  editIndex = index;
-  const m = mitraData[index];
-  document.getElementById('modalTitle').textContent   = 'Edit Mitra';
-  document.getElementById('emailMitra').value         = m.emailMitra;
-  document.getElementById('idPenyedia').value         = m.idPenyedia;
-  document.getElementById('namaMitra').value          = m.namaMitra;
-  document.getElementById('tanggalKerjaSama').value   = m.tanggalKerjaSama;
+function openEdit(email) {
+  const m = mitraData.find(m => m.emailMitra === email);
+  if (!m) return;
+  editEmail = email;
+  document.getElementById('modalTitle').textContent  = 'Edit Mitra';
+  document.getElementById('emailMitra').value        = m.emailMitra;
+  document.getElementById('idPenyedia').value        = m.idPenyedia;
+  document.getElementById('namaMitra').value         = m.namaMitra;
+  document.getElementById('tanggalKerjaSama').value  = m.tanggalKerjaSama;
+  // Disable email field on edit (email is the PK)
+  document.getElementById('emailMitra').disabled = true;
   showModal();
 }
 
 // =====================
-// SAVE
+// SAVE (Create / Update)
 // =====================
-function saveMitra() {
+async function saveMitra() {
   const emailMitra       = document.getElementById('emailMitra').value.trim();
   const idPenyedia       = document.getElementById('idPenyedia').value.trim();
   const namaMitra        = document.getElementById('namaMitra').value.trim();
@@ -157,32 +178,60 @@ function saveMitra() {
     return;
   }
 
-  const data = { emailMitra, idPenyedia: parseInt(idPenyedia), namaMitra, tanggalKerjaSama };
+  const payload = {
+    emailMitra,
+    idPenyedia: parseInt(idPenyedia),
+    namaMitra,
+    tanggalKerjaSama,
+  };
 
-  if (editIndex === null) {
-    mitraData.push(data);
-  } else {
-    mitraData[editIndex] = data;
+  const url = editEmail
+    ? `/rewards/api/mitra/update/${encodeURIComponent(editEmail)}/`
+    : `/rewards/api/mitra/create/`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      closeModal();
+      await loadMitra();
+    } else {
+      alert('Gagal menyimpan: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Gagal konek ke server: ' + e.message);
   }
-
-  closeModal();
-  populatePenyediaFilter();
-  filterTable();
 }
 
 // =====================
 // DELETE
 // =====================
-function deleteMitra(index) {
-  if (confirm(`Hapus mitra "${mitraData[index].namaMitra}"?`)) {
-    mitraData.splice(index, 1);
-    populatePenyediaFilter();
-    filterTable();
+async function deleteMitra(email, nama) {
+  if (!confirm(`Hapus mitra "${nama}"?`)) return;
+  try {
+    const res = await fetch(`/rewards/api/mitra/delete/${encodeURIComponent(email)}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrfToken() },
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      await loadMitra();
+    } else {
+      alert('Gagal menghapus: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Gagal konek ke server: ' + e.message);
   }
 }
 
 // =====================
 // INIT
 // =====================
-populatePenyediaFilter();
-renderTable();
+loadMitra();
