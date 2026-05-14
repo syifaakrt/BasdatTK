@@ -32,15 +32,15 @@ def kelola_member(request):
 
             cur.execute("""
                 INSERT INTO member (email, tanggal_bergabung, id_tier, award_miles, total_miles)
-                VALUES (%s, CURRENT_DATE, 'Blue', 0, 0);
+                VALUES (%s, CURRENT_DATE, 'T001', 0, 0);
             """, (email,))
 
             conn.commit()
-            messages.success(request, 'Member berhasil ditambahkan.')
+            django_messages.success(request, 'Member berhasil ditambahkan.')
 
         except Exception as e:
             conn.rollback()
-            messages.error(request, str(e).split('\n')[0])
+            django_messages.error(request, str(e).split('\n')[0])
 
     elif request.method == 'POST' and request.POST.get('action') == 'edit':
         try:
@@ -65,11 +65,11 @@ def kelola_member(request):
             """, (id_tier, email))
 
             conn.commit()
-            messages.success(request, 'Member berhasil diupdate.')
+            django_messages.success(request, 'Member berhasil diupdate.')
 
         except Exception as e:
             conn.rollback()
-            messages.error(request, str(e).split('\n')[0])
+            django_messages.error(request, str(e).split('\n')[0])
 
     # HAPUS MEMBER
     elif request.method == 'POST' and request.POST.get('action') == 'hapus':
@@ -77,11 +77,11 @@ def kelola_member(request):
             email = request.POST.get('email')
             cur.execute("DELETE FROM pengguna WHERE email=%s;", (email,))
             conn.commit()
-            messages.success(request, 'Member berhasil dihapus.')
+            django_messages.success(request, 'Member berhasil dihapus.')
 
         except Exception as e:
             conn.rollback()
-            messages.error(request, str(e).split('\n')[0])
+            django_messages.error(request, str(e).split('\n')[0])
 
     # AMBIL DATA MEMBER
     cur.execute("""
@@ -117,11 +117,9 @@ def identitas(request):
 
     conn = get_connection()
     cur = conn.cursor()
-
-    try:
-        if request.method == 'POST':
-            action = request.POST.get('action')
-
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        try:
             if action == 'tambah':
                 cur.execute("""
                     INSERT INTO identitas (nomor, email_member, jenis, negara_penerbit, tanggal_terbit, tanggal_habis)
@@ -162,25 +160,26 @@ def identitas(request):
                 conn.commit()
                 django_messages.success(request, 'Identitas berhasil dihapus.')
 
-            return redirect('identitas')
+        except Exception as e:
+            conn.rollback()
+            django_messages.error(request, str(e).split('\n')[0])
 
-        # GET — ambil semua identitas milik user
+        finally:
+            cur.close()
+            conn.close()
+
+        return redirect('member:identitas')  # ← selalu redirect setelah POST
+    try:
         cur.execute("""
             SELECT nomor, jenis, negara_penerbit, tanggal_terbit, tanggal_habis,
-                   CASE WHEN tanggal_habis >= CURRENT_DATE THEN 'Aktif' ELSE 'Kedaluwarsa' END AS status
+                CASE WHEN tanggal_habis >= CURRENT_DATE THEN 'Aktif' ELSE 'Kedaluwarsa' END AS status
             FROM identitas
             WHERE email_member = %s
             ORDER BY tanggal_terbit DESC
         """, (user_email,))
         identitas_list = cur.fetchall()
-
     except Exception as e:
-        django_messages.error(request, str(e).split('\n')[0])
         identitas_list = []
-
-    finally:
-        cur.close()
-        conn.close()
 
     context=base_context("member","","",user)
 
