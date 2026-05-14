@@ -1,10 +1,9 @@
 from pyexpat.errors import messages
-
+from django.contrib import messages as django_messages
 from django.shortcuts import redirect, render
 from db import get_connection
-from rewards.views import staff_nav_items, member_nav_items
-
-
+from miles.views import _require_role
+from rewards.views import staff_nav_items, member_nav_items, base_context
 from django.contrib.auth.hashers import make_password
 from db import get_connection
 
@@ -92,6 +91,7 @@ def kelola_member(request):
         ORDER BY m.nomor_member;
     """)
     members = cur.fetchall()
+    print(members)
 
     cur.close()
     conn.close()
@@ -100,12 +100,12 @@ def kelola_member(request):
         "nav_items": nav_items,
         "role": "staff",
         "members": members,
-        ##"messages": messages.get_messages(request)
     })
 
-from django.contrib import messages as django_messages
 
 def identitas(request):
+    user, redirect_response = _require_role(request, "member")
+
     nav_items = member_nav_items()
     user_email = request.session.get('user_email')
 
@@ -176,8 +176,13 @@ def identitas(request):
         cur.close()
         conn.close()
 
+    context=base_context("member","","",user)
+
     return render(request, 'member/identitas.html', {
         "nav_items": nav_items,
         "role": "member",
         "identitas_list": identitas_list,
+        "user_name": user["full_name"],
+        "user_code": user["user_code"],
+        "current_page": "Identitas Saya",
     })

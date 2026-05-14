@@ -5,8 +5,68 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from main.views import get_current_user, get_role
 from db import get_connection
+
+
+def _get_session_email(request):
+    return request.session.get("user_email") or request.session.get("email")
+
+
+def _get_user_context(request):
+    email = _get_session_email(request)
+    if not email:
+        return None
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT
+                p.email,
+                p.first_mid_name,
+                p.last_name,
+                m.nomor_member,
+                s.id_staf,
+                CASE
+                    WHEN m.email IS NOT NULL THEN 'member'
+                    WHEN s.email IS NOT NULL THEN 'staff'
+                    ELSE NULL
+                END AS role
+            FROM aeromiles.pengguna p
+            LEFT JOIN aeromiles.member m ON m.email = p.email
+            LEFT JOIN aeromiles.staf s ON s.email = p.email
+
+            WHERE p.email = %s
+            """,
+            (email,),
+        )
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    if not row:
+        return None
+
+    full_name = f"{row[1] or ''} {row[2] or ''}".strip()
+    return {
+        "email": row[0],
+        "full_name": full_name,
+        "nomor_member": row[3],
+        "id_staf": row[4],
+        "role": row[5],
+        "user_code": row[3] if row[5] == "member" else row[4],
+    }
+
+
+def _require_role(request, role):
+    user = _get_user_context(request)
+    if not user:
+        return None, redirect("login")
+    if user["role"] != role:
+        return user, redirect("dashboard")
+    return user, None
 
 
 def member_nav_items():
@@ -19,7 +79,6 @@ def member_nav_items():
         {"label": "Beli Package", "href": "/rewards/member/beli-package/"},
         {"label": "Info Tier", "href": "/rewards/member/info-tier/"},
         {"label": "Pengaturan Profil", "href": "/profile/"},
-        {"label": "Logout", "href": "/logout/"},
     ]
 
 
@@ -32,7 +91,6 @@ def staff_nav_items():
         {"label": "Kelola Mitra", "href": "/rewards/staf/kelola-mitra"},
         {"label": "Laporan Transaksi", "href": "/rewards/staf/laporan-transaksi/"},
         {"label": "Pengaturan Profil", "href": "/profile/"},
-        {"label": "Logout", "href": "/logout/"},
     ]
 
 
@@ -89,20 +147,28 @@ def member_redeem_hadiah(request):
             conn = get_connection()
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO redeem (email_member, kode_hadiah, timestamp)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                CALL sp_redeem_hadiah(%s, %s, NULL)
             """, (email, kode_hadiah))
+            
+            # Ambil nilai INOUT p_message
+            result = cur.fetchone()
+            pesan = result[0] if result else None
+            
             conn.commit()
-
-            notice = conn.notices[-1].strip() if conn.notices else "Redeem berhasil diproses."
-            messages.success(request, notice)
+            
+            if pesan:
+                messages.success(request, pesan)
 
             cur.close()
             conn.close()
             return redirect("/rewards/member/redeem-hadiah/")
 
         except Exception as e:
-            messages.error(request, str(e))
+            error_msg = getattr(e, 'diag', None)
+            if error_msg:
+                messages.error(request, e.diag.message_primary)
+            else:
+                messages.error(request, str(e).split('\n')[0])
             return redirect("/rewards/member/redeem-hadiah/")
 
     hadiah_list = fetch_all_dict("""
@@ -119,7 +185,6 @@ def member_redeem_hadiah(request):
         JOIN penyedia p ON p.id = h.id_penyedia
         LEFT JOIN mitra mi ON mi.id_penyedia = p.id
         LEFT JOIN maskapai ma ON ma.id_penyedia = p.id
-        WHERE CURRENT_DATE BETWEEN h.valid_start_date AND h.program_end
         ORDER BY h.miles ASC
     """)
 
@@ -142,7 +207,6 @@ def member_redeem_hadiah(request):
         "penyedia": "-",
         "miles": 0,
     }
-
     context = base_context("member", "Redeem Hadiah", "Redeem Hadiah", member)
     context.update({
         "member_award_miles": member["award_miles"],
@@ -274,126 +338,109 @@ def member_info_tier(request):
 # STAFF VIEWS
 # ---------------------------------------------------------------------------
 def staff_laporan_transaksi(request):
-    email = get_logged_in_email(request)
-    if not email:
-        return redirect("login")
+    transactions = []
+    top_total_miles = []
+    sp_message = ""
+    stats = {"total_miles_beredar": 0, "total_redeem_bulan_ini": 0, "total_klaim_disetujui": 0}
 
-    staff = get_staff_info(email)
-    if not staff:
-        return redirect("login")
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
 
-    transactions = fetch_all_dict("""
-        SELECT *
-        FROM (
-            SELECT
-                'Transfer' AS tipe,
-                email_member_1 AS member,
-                jumlah AS jumlah_miles,
-                timestamp,
-                true AS dapat_dihapus
+        # ── 1. Gabungan transaksi dari 3 tabel ──────────────────────────
+        cur.execute("""
+            SELECT 'Transfer' AS tipe, email_member_1 AS member,
+                   jumlah AS jumlah_miles, timestamp, TRUE AS dapat_dihapus
             FROM transfer
 
             UNION ALL
 
-            SELECT
-                'Redeem' AS tipe,
-                r.email_member AS member,
-                h.miles AS jumlah_miles,
-                r.timestamp,
-                true AS dapat_dihapus
+            SELECT 'Redeem' AS tipe, r.email_member AS member,
+                   h.miles AS jumlah_miles, r.timestamp, TRUE AS dapat_dihapus
             FROM redeem r
             JOIN hadiah h ON h.kode_hadiah = r.kode_hadiah
 
             UNION ALL
 
-            SELECT
-                'Pembelian Package' AS tipe,
-                mamp.email_member AS member,
-                amp.jumlah_award_miles AS jumlah_miles,
-                mamp.timestamp,
-                true AS dapat_dihapus
+            SELECT 'Pembelian Package' AS tipe, mamp.email_member AS member,
+                   amp.jumlah_award_miles AS jumlah_miles, mamp.timestamp, TRUE AS dapat_dihapus
             FROM member_award_miles_package mamp
             JOIN award_miles_package amp ON amp.id = mamp.id_award_miles_package
 
             UNION ALL
 
-            SELECT
-                'Klaim Disetujui' AS tipe,
-                email_member AS member,
-                1000 AS jumlah_miles,
-                timestamp,
-                false AS dapat_dihapus
+            SELECT 'Klaim Disetujui' AS tipe, email_member AS member,
+                   1000 AS jumlah_miles, timestamp, FALSE AS dapat_dihapus
             FROM claim_missing_miles
-            WHERE status_penerimaan = 'Disetujui'
-        ) x
-        ORDER BY timestamp DESC
-    """)
+            WHERE status_penerimaan = 'Diterima'
 
-    top_total_miles = fetch_all_dict("""
-        SELECT email AS member, total_miles
-        FROM member
-        ORDER BY total_miles DESC
-        LIMIT 5
-    """)
+            ORDER BY timestamp DESC
+        """)
+        rows = cur.fetchall()
+        transactions = [
+            {
+                "tipe": r[0],
+                "member": r[1],
+                "jumlah_miles": r[2],
+                "timestamp": str(r[3]),
+                "dapat_dihapus": r[4],
+            }
+            for r in rows
+        ]
 
-    top_activity = fetch_all_dict("""
-        SELECT member, aktivitas, jumlah
-        FROM (
-            SELECT email_member_1 AS member, 'Transfer' AS aktivitas, COUNT(*) AS jumlah
-            FROM transfer
-            GROUP BY email_member_1
+        # ── 2. Stats ─────────────────────────────────────────────────────
+        cur.execute("SELECT COALESCE(SUM(total_miles), 0) FROM member")
+        stats["total_miles_beredar"] = cur.fetchone()[0]
 
-            UNION ALL
+        cur.execute("SELECT COUNT(*) FROM redeem WHERE DATE_TRUNC('month', timestamp) = DATE_TRUNC('month', CURRENT_DATE)")
+        stats["total_redeem_bulan_ini"] = cur.fetchone()[0]
 
-            SELECT email_member AS member, 'Redeem' AS aktivitas, COUNT(*) AS jumlah
-            FROM redeem
-            GROUP BY email_member
-        ) x
-        ORDER BY jumlah DESC
-        LIMIT 5
-    """)
+        cur.execute("SELECT COUNT(*) FROM claim_missing_miles WHERE status_penerimaan = 'Diterima'")
+        stats["total_klaim_disetujui"] = cur.fetchone()[0]
 
-    stats = fetch_one_dict("""
-        SELECT
-            COALESCE((SELECT SUM(total_miles) FROM member), 0) AS total_miles_beredar,
-            COALESCE((
-                SELECT COUNT(*)
-                FROM redeem
-                WHERE DATE_TRUNC('month', timestamp) = DATE_TRUNC('month', CURRENT_DATE)
-            ), 0) AS total_redeem_bulan_ini,
-            COALESCE((
-                SELECT COUNT(*)
-                FROM claim_missing_miles
-                WHERE status_penerimaan = 'Disetujui'
-            ), 0) AS total_klaim_disetujui
-    """)
+        # ── 3. Stored Procedure: Top 5 Member by Total Miles ─────────────
+        cur.execute("SELECT * FROM get_top5_member_by_total_miles()")
+        top_rows = cur.fetchall()
+        top_total_miles = [
+            {
+                "peringkat": r[0],
+                "member": r[1],
+                "nama_lengkap": r[2],
+                "total_miles": r[3],
+            }
+            for r in top_rows
+        ]
 
-    context = base_context("staff", "Laporan Transaksi", "Laporan & Riwayat Transaksi Miles", staff)
+        # Ambil pesan RAISE NOTICE dari stored procedure
+        if conn.notices:
+            sp_message = conn.notices[-1].replace("NOTICE:  ", "").strip()
+
+        cur.close()
+        conn.close()
+
+    except Exception as e:
+        sp_message = f"Error: {str(e)}"
+
+    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles")
     context.update({
         "transactions": transactions,
         "top_total_miles": top_total_miles,
-        "top_activity": top_activity,
+        "sp_message": sp_message,
         "stats": stats,
-        "filters": {
-            "date_start": "",
-            "date_end": "",
-        },
+        "filters": {"selected_type": "Semua", "selected_member": "Semua Member", "date_start": "", "date_end": ""},
     })
     return render(request, "staff/laporan_transaksi.html", context)
-
 
 # ---------------------------------------------------------------------------
 # KELOLA HADIAH - PAGE
 # ---------------------------------------------------------------------------
 def kelola_hadiah(request):
-    user = get_current_user(request)
-    if not user or get_role(user.email) != 'staff':
-        return redirect('login')
-    return render(request, 'staff/kelola_hadiah.html', {
-        'user': user,
-        'nav_items': staff_nav_items(),
-        'role': 'staff'
-    })
+    email=get_logged_in_email(request)
+    staff=get_staff_info(email)
+    if not staff:
+        return redirect("login")
+    context=base_context("staff", "Kelola Hadiah & Penyedia", "", staff)
+    return render(request, 'staff/kelola_hadiah.html', context)
 
 
 # ---------------------------------------------------------------------------
@@ -524,10 +571,12 @@ def api_hadiah_delete(request, kode):
 # KELOLA MITRA - PAGE
 # ---------------------------------------------------------------------------
 def kelola_mitra(request):
-    user = get_current_user(request)
-    if not user or get_role(user.email) != 'staff':
-        return redirect('login')
-    return render(request, 'staff/kelola_mitra.html', {'user': user, 'nav_items':staff_nav_items(), 'role': 'staff'})
+    email = get_logged_in_email(request)
+    user=get_staff_info(email)
+    if not user:
+        return redirect("login")
+    context=base_context('staff','Kelola Mitra',"",user)    
+    return render(request, 'staff/kelola_mitra.html',context)
 
 def fetch_all_dict(query, params=None):
     conn = get_connection()
@@ -571,3 +620,126 @@ def get_staff_info(email):
         JOIN staf s ON s.email = p.email
         WHERE p.email = %s
     """, (email,))
+
+
+
+# ---------------------------------------------------------------------------
+# KELOLA MITRA - API
+# ---------------------------------------------------------------------------
+def api_mitra_list(request):
+    """GET /rewards/api/mitra/ → list semua mitra"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT m.email_mitra, m.id_penyedia, m.nama_mitra, m.tanggal_kerja_sama
+            FROM mitra m
+            ORDER BY m.id_penyedia
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        data = [
+            {
+                "emailMitra": r[0],
+                "idPenyedia": r[1],
+                "namaMitra": r[2],
+                "tanggalKerjaSama": str(r[3]),
+            }
+            for r in rows
+        ]
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def api_mitra_create(request):
+    """POST /rewards/api/mitra/create/ → tambah mitra"""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        body = json.loads(request.body)
+        email_mitra       = body.get("emailMitra")
+        id_penyedia       = body.get("idPenyedia")
+        nama_mitra        = body.get("namaMitra")
+        tanggal_kerja_sama = body.get("tanggalKerjaSama")
+
+        if not all([email_mitra, id_penyedia, nama_mitra, tanggal_kerja_sama]):
+            return JsonResponse({"error": "Semua field wajib diisi"}, status=400)
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # Cek apakah id_penyedia sudah dipakai mitra lain (UNIQUE constraint)
+        cur.execute("SELECT email_mitra FROM mitra WHERE id_penyedia=%s", (id_penyedia,))
+        if cur.fetchone():
+            return JsonResponse({"error": f"Penyedia ID {id_penyedia} sudah terdaftar sebagai mitra lain"}, status=400)
+
+        # Cek apakah penyedia ada, kalau belum insert baru dengan DEFAULT VALUES
+        cur.execute("SELECT id FROM penyedia WHERE id=%s", (id_penyedia,))
+        if not cur.fetchone():
+            cur.execute("INSERT INTO penyedia DEFAULT VALUES RETURNING id")
+            generated_id = cur.fetchone()[0]
+            id_penyedia = generated_id  # pakai id yang di-generate DB
+
+        cur.execute("""
+            INSERT INTO mitra (email_mitra, id_penyedia, nama_mitra, tanggal_kerja_sama)
+            VALUES (%s, %s, %s, %s)
+        """, (email_mitra, id_penyedia, nama_mitra, tanggal_kerja_sama))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def api_mitra_update(request, email):
+    """POST /rewards/api/mitra/update/<email>/ → edit mitra"""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        body = json.loads(request.body)
+        nama_mitra        = body.get("namaMitra")
+        tanggal_kerja_sama = body.get("tanggalKerjaSama")
+        id_penyedia       = body.get("idPenyedia")
+
+        if not all([nama_mitra, tanggal_kerja_sama, id_penyedia]):
+            return JsonResponse({"error": "Semua field wajib diisi"}, status=400)
+
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE mitra
+            SET nama_mitra=%s, tanggal_kerja_sama=%s, id_penyedia=%s
+            WHERE email_mitra=%s
+        """, (nama_mitra, tanggal_kerja_sama, id_penyedia, email))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def api_mitra_delete(request, email):
+    """POST /rewards/api/mitra/delete/<email>/ → hapus mitra"""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM mitra WHERE email_mitra=%s", (email,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

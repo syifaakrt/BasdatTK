@@ -2,11 +2,11 @@ from django.shortcuts import render
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
-from .models import Pengguna, Member, Staf, ClaimMissingMiles, Redeem, Transfer, MemberAwardMilesPackage
 from django.contrib.auth.hashers import check_password
 
 from django.db import DatabaseError
 from db import get_connection
+from rewards.views import base_context
 
 def register_view(request):
     if request.method == 'POST':
@@ -71,93 +71,257 @@ def get_session(request):
     role = request.session.get('role', 'member')
     return email, role
 
+# =====================
+# PENGATURAN PROFIL
+# =====================
+
 def pengaturan_profile(request):
     from rewards.views import staff_nav_items, member_nav_items
 
-    user = get_current_user(request)
-    if not user:
+    email = request.session.get('user_email') or request.session.get('email')
+    if not email:
         return redirect('login')
 
-    role = get_role(user.email)
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                p.email,
+                p.salutation,
+                p.first_mid_name,
+                p.last_name,
+                p.country_code,
+                p.mobile_number,
+                p.tanggal_lahir,
+                p.kewarganegaraan,
+                CASE
+                    WHEN m.email IS NOT NULL THEN 'member'
+                    WHEN s.email IS NOT NULL THEN 'staff'
+                    ELSE NULL
+                END AS role,
+                m.nomor_member,
+                m.tanggal_bergabung,
+                s.id_staf,
+                s.kode_maskapai
+            FROM pengguna p
+            LEFT JOIN member m ON p.email = m.email
+            LEFT JOIN staf s ON p.email = s.email
+            WHERE p.email = %s
+        """, (email,))
+        row = cur.fetchone()
 
-    if role == 'member':
-        member = Member.objects.get(email_id=user.email)
-        profil = (
-            user.email,                   
-            user.salutation,              
-            user.first_mid_name,          
-            user.last_name,               
-            user.country_code,            
-            user.mobile_number,           
-            user.tanggal_lahir,           
-            user.kewarganegaraan,         
-            member.nomor_member,          
-            member.tanggal_bergabung,     
-        )
-        nav_items = member_nav_items()
-        maskapai_list = []
+        if not row:
+            return redirect('login')
 
-    elif role == 'staff':
-        staf = Staf.objects.select_related('kode_maskapai').get(email_id=user.email)
-        profil = (
-            user.email,                              
-            user.salutation,                         
-            user.first_mid_name,                     
-            user.last_name,                         
-            user.country_code,                  
-            user.mobile_number,                  
-            user.tanggal_lahir,              
-            user.kewarganegaraan,                  
-            staf.id_staf,                           
-            staf.kode_maskapai.kode_maskapai,       
-        )
-        nav_items = staff_nav_items()
-        maskapai_list = list(
-            Staf.objects.select_related('kode_maskapai')
-            .values_list('kode_maskapai__kode_maskapai', 'kode_maskapai__nama_maskapai')
-            .distinct()
-        )
+        role = row[8]
+        id=''
 
-    else:
-        return redirect('login')
+        if role == 'member':
+            profil = (
+                row[0],   # email
+                row[1],   # salutation
+                row[2],   # first_mid_name
+                row[3],   # last_name
+                row[4],   # country_code
+                row[5],   # mobile_number
+                row[6],   # tanggal_lahir
+                row[7],   # kewarganegaraan
+                row[9],   # nomor_member
+                row[10],  # tanggal_bergabung
+            )
+            nav_items = member_nav_items()
+            maskapai_list = []
+            id=row[9]
 
-    return render(request, 'pengaturan_profile.html', {
+        elif role == 'staff':
+            profil = (
+                row[0],   # email
+                row[1],   # salutation
+                row[2],   # first_mid_name
+                row[3],   # last_name
+                row[4],   # country_code
+                row[5],   # mobile_number
+                row[6],   # tanggal_lahir
+                row[7],   # kewarganegaraan
+                row[11],  # id_staf
+                row[12],  # kode_maskapai
+            )
+            nav_items = staff_nav_items()
+            id=row[11]
+
+            cur.execute("""
+                SELECT kode_maskapai, nama_maskapai
+                FROM maskapai
+                ORDER BY kode_maskapai
+            """)
+            maskapai_list = cur.fetchall()
+
+        else:
+            return redirect('login')
+
+    finally:
+        cur.close()
+        conn.close()
+    
+    
+    context = base_context(page_title="", current_page="Pengaturan Profil", role="")
+    context.update({
         'profil': profil,
         'role': role,
         'maskapai_list': maskapai_list,
         'nav_items': nav_items,
+        "user_name": row[2] + " " +row[3],
+        "user_code": id,
     })
+    return render(request, 'pengaturan_profile.html', context)
 
 def update_profile(request):
-    email, role = get_session(request)
-    if request.method == 'POST':
-        messages.success(request, 'Profil berhasil diperbarui!')
-    return redirect('pengaturan_profile')
+    if request.method != 'POST':
+        return redirect('pengaturan_profile')
 
+    email = request.session.get('user_email') or request.session.get('email')
+    if not email:
+        return redirect('login')
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT
+                CASE
+                    WHEN EXISTS (SELECT 1 FROM member WHERE email = %s) THEN 'member'
+                    WHEN EXISTS (SELECT 1 FROM staf WHERE email = %s) THEN 'staff'
+                    ELSE NULL
+                END
+        """, (email, email))
+        role_row = cur.fetchone()
+        role = role_row[0] if role_row else None
+
+        cur.execute("""
+            UPDATE pengguna
+            SET
+                salutation = %s,
+                first_mid_name = %s,
+                last_name = %s,
+                country_code = %s,
+                mobile_number = %s,
+                tanggal_lahir = %s,
+                kewarganegaraan = %s
+            WHERE email = %s
+        """, (
+            request.POST.get('salutation'),
+            request.POST.get('first_mid_name'),
+            request.POST.get('last_name'),
+            request.POST.get('country_code'),
+            request.POST.get('mobile_number'),
+            request.POST.get('tanggal_lahir'),
+            request.POST.get('kewarganegaraan'),
+            email,
+        ))
+
+        if role == 'staff':
+            cur.execute("""
+                UPDATE staf
+                SET kode_maskapai = %s
+                WHERE email = %s
+            """, (
+                request.POST.get('kode_maskapai'),
+                email,
+            ))
+
+        conn.commit()
+        messages.success(request, 'Profil berhasil diperbarui!')
+    except Exception as e:
+        conn.rollback()
+        messages.error(request, f'Gagal memperbarui profil: {e}')
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect('pengaturan_profile')
 
 def update_password(request):
-    email, role = get_session(request)
-    if request.method == 'POST':
-        messages.success(request, 'Password berhasil diubah!')
-    return redirect('pengaturan_profile')
+    if request.method != 'POST':
+        return redirect('pengaturan_profile')
 
+    email = request.session.get('user_email') or request.session.get('email')
+    if not email:
+        return redirect('login')
+
+    password_lama = request.POST.get('password_lama')
+    password_baru = request.POST.get('password_baru')
+    konfirmasi_password = request.POST.get('konfirmasi_password')
+
+    if password_baru != konfirmasi_password:
+        messages.error(request, 'Konfirmasi password baru tidak cocok.')
+        return redirect('pengaturan_profile')
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT password
+            FROM pengguna
+            WHERE email = %s
+        """, (email,))
+        row = cur.fetchone()
+
+        if not row or not check_password(password_lama, row[0]):
+            messages.error(request, 'Password lama salah.')
+            return redirect('pengaturan_profile')
+
+        hashed_password = make_password(password_baru)
+        cur.execute("""
+            UPDATE pengguna
+            SET password = %s
+            WHERE email = %s
+        """, (hashed_password, email))
+
+        conn.commit()
+        messages.success(request, 'Password berhasil diubah!')
+    except Exception as e:
+        conn.rollback()
+        messages.error(request, f'Gagal mengubah password: {e}')
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect('pengaturan_profile')
 
 def get_current_user(request):
     email = request.session.get('user_email')
     if not email:
         return None
-    try:
-        return Pengguna.objects.get(pk=email)
-    except Pengguna.DoesNotExist:
-        return None
+    
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM pengguna WHERE email = %s;", (email,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    return user
 
 def get_role(email):
-    if Member.objects.filter(email_id=email).exists():
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT 1 FROM member WHERE email = %s;", (email,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
         return 'member'
-    if Staf.objects.filter(email_id=email).exists():
+    
+    cur.execute("SELECT 1 FROM staf WHERE email = %s;", (email,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
         return 'staff'
+    
+    cur.close()
+    conn.close()
     return None
-
 # =====================
 # LOGIN
 # =====================
@@ -263,9 +427,13 @@ def dashboard(request):
             'staf': staf,
             'maskapai': staf.kode_maskapai.nama_maskapai,
             'klaim_menunggu': klaim_menunggu,
+            "user_name": user["full_name"],
+            "user_code": user["user_code"],
             'klaim_disetujui': klaim_disetujui,
             'klaim_ditolak': klaim_ditolak,
-            'nav_items':staff_nav_items()
+            'nav_items':staff_nav_items(),
+            "current_page": "Dashboard",
+
         })
 
     return render(request, 'dashboard.html', context)

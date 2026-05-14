@@ -50,7 +50,7 @@ BEGIN
     INTO flight_frequency
     FROM aeromiles.claim_missing_miles c
     WHERE c.email_member = NEW.email
-      AND c.status_penerimaan = 'Disetujui';
+      AND c.status_penerimaan = 'Diterima';
 
     SELECT t.id_tier, t.nama
     INTO new_tier_id, new_tier_name

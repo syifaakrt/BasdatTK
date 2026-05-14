@@ -12,12 +12,30 @@
         <p class="text-gray-500 max-w-xl leading-relaxed">
             Lihat katalog hadiah, cek kebutuhan miles, dan pantau riwayat penukaran miles Anda.
         </p>
+
     </div>
+    
     <div class="bg-white border border-gray-100 rounded-2xl shadow px-6 py-4 min-w-[200px]">
         <span class="block text-xs text-gray-500 mb-1">Award Miles Tersedia</span>
         <strong class="text-3xl font-bold text-[#0b1f3a]">{{ member_award_miles }}</strong>
     </div>
 </div>
+{% if messages %}
+<div class="flex flex-col gap-3 mb-5">
+    {% for message in messages %}
+        {% if message.tags == 'success' %}
+        <div class="bg-green-100 text-green-800 border border-green-300 px-4 py-3 rounded-lg text-sm font-semibold">
+            {{ message }}
+        </div>
+        {% else %}
+        <div class="bg-red-100 text-red-800 border border-red-300 px-4 py-3 rounded-lg text-sm font-semibold">
+            {{ message }}
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
 
 <!-- Main Grid -->
 <div class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6">
