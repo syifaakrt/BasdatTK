@@ -39,16 +39,24 @@ DECLARE
     old_tier_name VARCHAR(50);
     new_tier_id VARCHAR(10);
     new_tier_name VARCHAR(50);
+    flight_frequency INT;
 BEGIN
     SELECT t.nama
     INTO old_tier_name
     FROM aeromiles.tier t
     WHERE t.id_tier = OLD.id_tier;
 
+    SELECT COUNT(*)
+    INTO flight_frequency
+    FROM aeromiles.claim_missing_miles c
+    WHERE c.email_member = NEW.email
+      AND c.status_penerimaan IN ('Disetujui', 'Diterima');
+
     SELECT t.id_tier, t.nama
     INTO new_tier_id, new_tier_name
     FROM aeromiles.tier t
     WHERE NEW.total_miles >= t.minimal_tier_miles
+      AND flight_frequency >= t.minimal_frekuensi_terbang
     ORDER BY t.minimal_tier_miles DESC, t.minimal_frekuensi_terbang DESC
     LIMIT 1;
 

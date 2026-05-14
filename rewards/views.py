@@ -223,6 +223,12 @@ def member_info_tier(request):
             m.nomor_member AS user_code,
             m.total_miles AS tier_miles,
             m.total_miles,
+            (
+                SELECT COUNT(*)
+                FROM claim_missing_miles c
+                WHERE c.email_member = m.email
+                  AND c.status_penerimaan IN ('Disetujui', 'Diterima')
+            ) AS flight_frequency,
             m.id_tier
         FROM pengguna p
         JOIN member m ON m.email = p.email
@@ -237,24 +243,38 @@ def member_info_tier(request):
 
     current_tier = tier_list[0] if tier_list else None
     for tier in tier_list:
-        if member["total_miles"] >= tier["minimal_tier_miles"]:
+        if (
+            member["total_miles"] >= tier["minimal_tier_miles"]
+            and member["flight_frequency"] >= tier["minimal_frekuensi_terbang"]
+        ):
             current_tier = tier
         else:
             break
 
     next_tier = None
     for tier in tier_list:
-        if tier["minimal_tier_miles"] > member["total_miles"]:
+        if (
+            member["total_miles"] < tier["minimal_tier_miles"]
+            or member["flight_frequency"] < tier["minimal_frekuensi_terbang"]
+        ):
             next_tier = tier
             break
+
+    miles_to_next_tier = 0
+    flights_to_next_tier = 0
+    if next_tier:
+        miles_to_next_tier = max(next_tier["minimal_tier_miles"] - member["total_miles"], 0)
+        flights_to_next_tier = max(next_tier["minimal_frekuensi_terbang"] - member["flight_frequency"], 0)
 
     current_member = {
         "nama": member["user_name"],
         "nomor_member": member["user_code"],
         "current_tier": current_tier["nama"] if current_tier else "-",
         "tier_miles": member["tier_miles"],
+        "flight_frequency": member["flight_frequency"],
         "next_tier": next_tier["nama"] if next_tier else "Tier Maksimum",
-        "miles_to_next_tier": max(next_tier["minimal_tier_miles"] - member["total_miles"], 0) if next_tier else 0,
+        "miles_to_next_tier": miles_to_next_tier,
+        "flights_to_next_tier": flights_to_next_tier,
     }
 
     context = base_context("member", "Info Tier", "Informasi Tier & Keuntungan", member)
