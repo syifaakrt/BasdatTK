@@ -8,6 +8,7 @@ from django.contrib.auth.hashers import make_password
 from db import get_connection
 
 def kelola_member(request):
+    user, redirect_response = _require_role(request, "staff")
     nav_items = staff_nav_items()
     conn = get_connection()
     cur = conn.cursor()
@@ -95,11 +96,16 @@ def kelola_member(request):
 
     cur.close()
     conn.close()
+    context=base_context("staff","","",user)
+
 
     return render(request, 'member/kelola_member.html', {
         "nav_items": nav_items,
-        "role": "staff",
-        "members": members,
+        "role": "member",
+        "user_name": user["full_name"],
+        "user_code": user["user_code"],
+        "current_page": "Kelola Member",
+        "members": members
     })
 
 

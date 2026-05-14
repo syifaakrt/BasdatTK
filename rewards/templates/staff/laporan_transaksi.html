@@ -6,7 +6,6 @@
 
 <!-- Page Header -->
 <div class="mb-8">
-    <p class="text-xs font-bold uppercase tracking-widest text-[#1c4f87] mb-2">Staff Feature</p>
     <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2">Laporan & Riwayat Transaksi Miles</h1>
     <p class="text-gray-500 max-w-xl leading-relaxed">
         Pantau transaksi miles, tampilkan statistik sistem, dan lihat top member berdasarkan aktivitas.
@@ -162,7 +161,7 @@
                     {% for item in top_total_miles %}
                     <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
                         <td class="px-4 py-3 font-bold text-[#1c4f87]">{{ item.peringkat }}</td>
-                        <td class="px-4 py-3 font-medium text-[#0b1f3a]">{{ item.nama }}</td>
+                        <td class="px-4 py-3 font-medium text-[#0b1f3a]">{{ item.nama_lengkap }}</td>
                         <td class="px-4 py-3 text-gray-500 text-xs">{{ item.member }}</td>
                         <td class="px-4 py-3 font-bold text-[#0b1f3a]">{{ item.total_miles }}</td>
                     </tr>

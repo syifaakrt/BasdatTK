@@ -1,11 +1,12 @@
 import json
 from decimal import Decimal
+from django.db import connection
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.contrib import messages
-from django.http import JsonResponse
+from db import get_connection
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from db import get_connection
 
 def get_initials(name):
     parts = name.strip().split()
@@ -192,6 +193,8 @@ def member_redeem_hadiah(request):
         LEFT JOIN maskapai ma ON ma.id_penyedia = p.id
         ORDER BY h.miles ASC
     """)
+    for hadiah in hadiah_list:
+        hadiah["sisa_award_miles"] = member["award_miles"] - hadiah["miles"]
 
     redeem_history = fetch_all_dict("""
         SELECT
@@ -236,20 +239,14 @@ def member_beli_package(request):
         package_id = request.POST.get("package_id")
 
         try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO member_award_miles_package
-                    (id_award_miles_package, email_member, timestamp)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
-            """, (package_id, email))
-            conn.commit()
+            with connection.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO member_award_miles_package
+                        (id_award_miles_package, email_member, timestamp)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                """, (package_id, email))
 
-            notice = conn.notices[-1].strip() if conn.notices else "Pembelian package berhasil diproses."
-            messages.success(request, notice)
-
-            cur.close()
-            conn.close()
+            messages.success(request, "Pembelian package berhasil diproses.")
             return redirect("/rewards/member/beli-package/")
 
         except Exception as e:
@@ -300,13 +297,11 @@ def member_info_tier(request):
         SELECT
             p.first_mid_name || ' ' || p.last_name AS user_name,
             m.nomor_member AS user_code,
-            t.nama AS current_tier,
             m.total_miles AS tier_miles,
             m.total_miles,
             m.id_tier
         FROM pengguna p
         JOIN member m ON m.email = p.email
-        JOIN tier t ON t.id_tier = m.id_tier
         WHERE p.email = %s
     """, (email,))
 
@@ -315,6 +310,13 @@ def member_info_tier(request):
         FROM tier
         ORDER BY minimal_tier_miles ASC
     """)
+
+    current_tier = tier_list[0] if tier_list else None
+    for tier in tier_list:
+        if member["total_miles"] >= tier["minimal_tier_miles"]:
+            current_tier = tier
+        else:
+            break
 
     next_tier = None
     for tier in tier_list:
@@ -325,7 +327,7 @@ def member_info_tier(request):
     current_member = {
         "nama": member["user_name"],
         "nomor_member": member["user_code"],
-        "current_tier": member["current_tier"],
+        "current_tier": current_tier["nama"] if current_tier else "-",
         "tier_miles": member["tier_miles"],
         "next_tier": next_tier["nama"] if next_tier else "Tier Maksimum",
         "miles_to_next_tier": max(next_tier["minimal_tier_miles"] - member["total_miles"], 0) if next_tier else 0,
@@ -351,6 +353,24 @@ def staff_laporan_transaksi(request):
     try:
         conn = get_connection()
         cur = conn.cursor()
+            
+        top_activity = fetch_all_dict("""
+            SELECT member, aktivitas, jumlah
+            FROM (
+                SELECT email_member_1 AS member, 'Transfer' AS aktivitas, COUNT(*) AS jumlah
+                FROM transfer
+                GROUP BY email_member_1
+
+                UNION ALL
+
+                SELECT email_member AS member, 'Redeem' AS aktivitas, COUNT(*) AS jumlah
+                FROM redeem
+                GROUP BY email_member
+            ) x
+            ORDER BY jumlah DESC
+            LIMIT 5
+        """)
+
 
         # ── 1. Gabungan transaksi dari 3 tabel ──────────────────────────
         cur.execute("""
@@ -426,10 +446,11 @@ def staff_laporan_transaksi(request):
     except Exception as e:
         sp_message = f"Error: {str(e)}"
 
-    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles", request=request)
+    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles")
     context.update({
         "transactions": transactions,
         "top_total_miles": top_total_miles,
+        "top_activity": top_activity,
         "sp_message": sp_message,
         "stats": stats,
         "filters": {"selected_type": "Semua", "selected_member": "Semua Member", "date_start": "", "date_end": ""},
@@ -584,14 +605,11 @@ def kelola_mitra(request):
     return render(request, 'staff/kelola_mitra.html',context)
 
 def fetch_all_dict(query, params=None):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(query, params or ())
-    columns = [col[0] for col in cur.description]
-    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-    cur.close()
-    conn.close()
-    return rows
+    with connection.cursor() as cur:
+        cur.execute(query, params or ())
+        columns = [col[0] for col in cur.description]
+        return [dict(zip(columns, row)) for row in cur.fetchall()]
+
 
 
 def fetch_one_dict(query, params=None):

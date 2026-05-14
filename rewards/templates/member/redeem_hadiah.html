@@ -7,7 +7,6 @@
 <!-- Page Header -->
 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
     <div>
-        <p class="text-xs font-bold uppercase tracking-widest text-[#1c4f87] mb-2">Member Feature</p>
         <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2">Redeem Hadiah</h1>
         <p class="text-gray-500 max-w-xl leading-relaxed">
             Lihat katalog hadiah, cek kebutuhan miles, dan pantau riwayat penukaran miles Anda.
@@ -56,7 +55,7 @@
                 data-nama="{{ hadiah.nama }}"
                 data-penyedia="{{ hadiah.penyedia }}"
                 data-miles="{{ hadiah.miles }}"
-                data-sisa="{{ member_award_miles|add:hadiah.miles|add:'-10000' }}"
+                data-sisa="{{ hadiah.sisa_award_miles }}"
             >
                 <div class="flex items-start justify-between gap-3 mb-3">
                     <div>
