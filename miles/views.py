@@ -48,21 +48,21 @@ def claim_create(request):
     email, role = get_session(request)
     if request.method == 'POST':
         messages.success(request, 'Klaim berhasil diajukan!')
-    return redirect('claim_list')
+    return redirect('miles:claim_list')
 
 
 def claim_edit(request, id):
     email, role = get_session(request)
     if request.method == 'POST':
         messages.success(request, 'Klaim berhasil diperbarui!')
-    return redirect('claim_list')
+    return redirect('miles:claim_list')
 
 
 def claim_delete(request, id):
     email, role = get_session(request)
     if request.method == 'POST':
         messages.success(request, 'Klaim berhasil dibatalkan.')
-    return redirect('claim_list')
+    return redirect('miles:claim_list')
 
 
 # =====================
@@ -114,7 +114,7 @@ def staf_claim_update(request, id):
     if request.method == 'POST':
         status_baru = request.POST.get('status')
         messages.success(request, f'Status klaim berhasil diubah menjadi {status_baru}.')
-    return redirect('staf_claim_list')
+    return redirect('miles:staf_claim_list')
 
 
 # =====================
@@ -154,7 +154,7 @@ def transfer_create(request):
     if request.method == 'POST':
         jumlah = request.POST.get('jumlah')
         messages.success(request, f'Transfer {jumlah} miles berhasil!')
-    return redirect('transfer_list')
+    return redirect('miles:transfer_list')
 
 
 # =====================

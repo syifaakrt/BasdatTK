@@ -13,11 +13,13 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
 # Load environment variables from .env file
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env', override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -82,24 +84,16 @@ WSGI_APPLICATION = 'tk3.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Database configuration
-if PRODUCTION:
-    # Production: gunakan PostgreSQL dengan kredensial dari environment variables
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT'),
-            'OPTIONS': {
-                'options': f"-c search_path={os.getenv('SCHEMA', 'public')}"
-            }
-        }
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+    DATABASES['default']['OPTIONS'] = {
+        'options': f"-c search_path={os.getenv('SCHEMA', 'public')}"
     }
 else:
-    # Development: gunakan SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -152,3 +146,5 @@ load_dotenv()
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

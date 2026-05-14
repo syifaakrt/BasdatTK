@@ -39,31 +39,21 @@ DECLARE
     old_tier_name VARCHAR(50);
     new_tier_id VARCHAR(10);
     new_tier_name VARCHAR(50);
-    flight_frequency INT;
 BEGIN
     SELECT t.nama
     INTO old_tier_name
     FROM aeromiles.tier t
     WHERE t.id_tier = OLD.id_tier;
 
-    SELECT COUNT(*)
-    INTO flight_frequency
-    FROM aeromiles.claim_missing_miles c
-    WHERE c.email_member = NEW.email
-      AND c.status_penerimaan = 'Disetujui';
-
     SELECT t.id_tier, t.nama
     INTO new_tier_id, new_tier_name
     FROM aeromiles.tier t
     WHERE NEW.total_miles >= t.minimal_tier_miles
-      AND flight_frequency >= t.minimal_frekuensi_terbang
     ORDER BY t.minimal_tier_miles DESC, t.minimal_frekuensi_terbang DESC
     LIMIT 1;
 
     IF new_tier_id IS NOT NULL AND new_tier_id IS DISTINCT FROM NEW.id_tier THEN
-        UPDATE aeromiles.member
-        SET id_tier = new_tier_id
-        WHERE email = NEW.email;
+        NEW.id_tier := new_tier_id;
 
         RAISE NOTICE
             'SUKSES: Tier Member "%" telah diperbarui dari "%" menjadi "%" berdasarkan total miles yang dimiliki.',
@@ -80,7 +70,7 @@ DROP TRIGGER IF EXISTS trg_update_member_tier
 ON aeromiles.member;
 
 CREATE TRIGGER trg_update_member_tier
-AFTER UPDATE OF total_miles ON aeromiles.member
+BEFORE UPDATE OF total_miles ON aeromiles.member
 FOR EACH ROW
 WHEN (OLD.total_miles IS DISTINCT FROM NEW.total_miles)
 EXECUTE FUNCTION aeromiles.fn_update_member_tier();
