@@ -79,10 +79,9 @@
                 </div>
 
             {% elif role == "member" %}
-                <!-- MEMBER: Citra Dewi -->
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white select-none">
-                        CD
+                        {{ user_initials }}
                     </div>
                     <div class="text-right">
                         <p class="font-bold text-sm leading-tight">{{ user_name }}</p>
@@ -91,10 +90,9 @@
                 </div>
 
             {% elif role == "staff" %}
-                <!-- STAFF: Yasmin Omar -->
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white select-none">
-                        YO
+                        {{ user_initials }}
                     </div>
                     <div class="text-right">
                         <p class="font-bold text-sm leading-tight">{{ user_name }}</p>

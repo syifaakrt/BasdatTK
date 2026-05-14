@@ -14,6 +14,12 @@ def get_session(request):
     role = request.session.get('role', 'member')
     return email, role
 
+def get_initials(name):
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return parts[0][0].upper() + parts[1][0].upper()
+    return parts[0][:2].upper() if parts else "?"
+
 def pengaturan_profile(request):
     from rewards.views import staff_nav_items, member_nav_items
 
@@ -138,6 +144,7 @@ def login_view(request):
             messages.error(request, 'Terjadi kesalahan server.')
 
     return render(request, 'login.html')
+
 # =====================
 # LOGOUT
 # =====================
@@ -153,66 +160,126 @@ def dashboard(request):
     user = get_current_user(request)
     if not user:
         return redirect('login')
-    
+
+    email = user.email
     nama_lengkap = f"{user.first_mid_name} {user.last_name}"
+    role = get_role(email)
 
-    role = get_role(user.email)
-    context = {'user': user,
-               'role': role,
-               'nama_lengkap':nama_lengkap,
-               }
+    context = {
+    'user': user,
+    'role': role,
+    'nama_lengkap': nama_lengkap,
+    'user_name': nama_lengkap,
+    'user_initials': get_initials(nama_lengkap),
+    }
 
-    if role == 'member':
-        member = Member.objects.select_related('id_tier').get(email_id=user.email)
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
 
-        transaksi = []
+        if role == 'member':
+            # ── Data member + tier ──────────────────────────────────────
+            cur.execute("""
+                SELECT m.nomor_member, m.tanggal_bergabung, m.award_miles,
+                       m.total_miles, t.nama AS tier_nama
+                FROM member m
+                JOIN tier t ON t.id_tier = m.id_tier
+                WHERE m.email = %s
+            """, (email,))
+            row = cur.fetchone()
 
-        redeems = Redeem.objects.select_related('kode_hadiah').filter(email_member_id=user.email).order_by('-timestamp')[:5]
-        for r in redeems:
-            transaksi.append({
-                'tipe': 'Redeem',
-                'tanggal': r.timestamp.strftime('%Y-%m-%d %H:%M'),
-                'miles': -r.kode_hadiah.miles,
+            member_data = {
+                'nomor_member':      row[0],
+                'tanggal_bergabung': row[1],
+                'award_miles':       row[2],
+                'total_miles':       row[3],
+            }
+            tier_nama = row[4]
+
+            # ── 5 Transaksi terbaru ─────────────────────────────────────
+            cur.execute("""
+                SELECT tipe, tanggal, miles FROM (
+
+                    SELECT 'Redeem' AS tipe,
+                           r.timestamp AS tanggal,
+                           -h.miles AS miles
+                    FROM redeem r
+                    JOIN hadiah h ON h.kode_hadiah = r.kode_hadiah
+                    WHERE r.email_member = %s
+
+                    UNION ALL
+
+                    SELECT 'Transfer' AS tipe,
+                           t.timestamp AS tanggal,
+                           -t.jumlah AS miles
+                    FROM transfer t
+                    WHERE t.email_member_1 = %s
+
+                    UNION ALL
+
+                    SELECT 'Package' AS tipe,
+                           mamp.timestamp AS tanggal,
+                           amp.jumlah_award_miles AS miles
+                    FROM member_award_miles_package mamp
+                    JOIN award_miles_package amp ON amp.id = mamp.id_award_miles_package
+                    WHERE mamp.email_member = %s
+
+                ) AS all_transaksi
+                ORDER BY tanggal DESC
+                LIMIT 5
+            """, (email, email, email))
+
+            transaksi = [
+                {
+                    'tipe':    r[0],
+                    'tanggal': r[1].strftime('%Y-%m-%d %H:%M'),
+                    'miles':   r[2],
+                }
+                for r in cur.fetchall()
+            ]
+
+            context.update({
+                'member':    member_data,
+                'tier_nama': tier_nama,
+                'transaksi': transaksi,
+                'nav_items': member_nav_items(),
             })
 
-        transfers = Transfer.objects.filter(email_member_1_id=user.email).order_by('-timestamp')[:5]
-        for t in transfers:
-            transaksi.append({
-                'tipe': 'Transfer',
-                'tanggal': t.timestamp.strftime('%Y-%m-%d %H:%M'),
-                'miles': -t.jumlah,
+        elif role == 'staff':
+            # ── Data staf + maskapai ────────────────────────────────────
+            cur.execute("""
+                SELECT s.id_staf, m.nama_maskapai
+                FROM staf s
+                JOIN maskapai m ON m.kode_maskapai = s.kode_maskapai
+                WHERE s.email = %s
+            """, (email,))
+            row = cur.fetchone()
+            staf_data = {'id_staf': row[0]}
+            maskapai  = row[1]
+
+            # ── Statistik klaim ─────────────────────────────────────────
+            cur.execute("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status_penerimaan = 'Menunggu') AS menunggu,
+                    COUNT(*) FILTER (WHERE email_staf = %s AND status_penerimaan = 'Diterima') AS disetujui,
+                    COUNT(*) FILTER (WHERE email_staf = %s AND status_penerimaan = 'Ditolak') AS ditolak
+                FROM claim_missing_miles
+            """, (email, email))
+            klaim = cur.fetchone()
+
+            context.update({
+                'staf':            staf_data,
+                'maskapai':        maskapai,
+                'klaim_menunggu':  klaim[0],
+                'klaim_disetujui': klaim[1],
+                'klaim_ditolak':   klaim[2],
+                'nav_items':       staff_nav_items(),
             })
 
-        packages = MemberAwardMilesPackage.objects.select_related('id_award_miles_package').filter(email_member_id=user.email).order_by('-timestamp')[:5]
-        for p in packages:
-            transaksi.append({
-                'tipe': 'Package',
-                'tanggal': p.timestamp.strftime('%Y-%m-%d %H:%M'),
-                'miles': p.id_award_miles_package.jumlah_award_miles,
-            })
+        cur.close()
+        conn.close()
 
-        transaksi = sorted(transaksi, key=lambda x: x['tanggal'], reverse=True)[:5]
-
-        context.update({
-            'member': member,
-            'tier_nama': member.id_tier.nama,
-            'transaksi': transaksi,
-            'nav_items':member_nav_items()
-        })
-
-    elif role == 'staff':
-        staf = Staf.objects.select_related('kode_maskapai').get(email_id=user.email)
-        klaim_menunggu  = ClaimMissingMiles.objects.filter(status_penerimaan='Menunggu').count()
-        klaim_disetujui = ClaimMissingMiles.objects.filter(email_staf_id=user.email, status_penerimaan='Diterima').count()
-        klaim_ditolak   = ClaimMissingMiles.objects.filter(email_staf_id=user.email, status_penerimaan='Ditolak').count()
-
-        context.update({
-            'staf': staf,
-            'maskapai': staf.kode_maskapai.nama_maskapai,
-            'klaim_menunggu': klaim_menunggu,
-            'klaim_disetujui': klaim_disetujui,
-            'klaim_ditolak': klaim_ditolak,
-            'nav_items':staff_nav_items()
-        })
+    except Exception as e:
+        print(f"Dashboard DB error: {e}")
 
     return render(request, 'dashboard.html', context)

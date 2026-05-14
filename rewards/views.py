@@ -11,6 +11,11 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db import get_connection
 
+def get_initials(name):
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return parts[0][0].upper() + parts[1][0].upper()
+    return parts[0][:2].upper() if parts else "?"
 
 def member_nav_items():
     return [
@@ -39,19 +44,57 @@ def staff_nav_items():
     ]
 
 
-def base_context(role, current_page, page_title):
+def base_context(role, current_page, page_title, request=None):
+    user_name = ""
+    user_code = ""
+
     if role == "staff":
         nav_items = staff_nav_items()
-        user_name = "Yasmin Omar"
-        user_code = "S0001"
+        if request:
+            try:
+                email = request.session.get('user_email')
+                if email:
+                    conn = get_connection()
+                    cur = conn.cursor()
+                    cur.execute("""
+                        SELECT p.first_mid_name, p.last_name, s.id_staf
+                        FROM pengguna p
+                        JOIN staf s ON s.email = p.email
+                        WHERE p.email = %s
+                    """, (email,))
+                    row = cur.fetchone()
+                    cur.close()
+                    conn.close()
+                    if row:
+                        user_name = f"{row[0]} {row[1]}"
+                        user_code = row[2]
+            except Exception:
+                pass
+
     elif role == "member":
         nav_items = member_nav_items()
-        user_name = "Citra Dewi"
-        user_code = "M0003"
+        if request:
+            try:
+                email = request.session.get('user_email')
+                if email:
+                    conn = get_connection()
+                    cur = conn.cursor()
+                    cur.execute("""
+                        SELECT p.first_mid_name, p.last_name, m.nomor_member
+                        FROM pengguna p
+                        JOIN member m ON m.email = p.email
+                        WHERE p.email = %s
+                    """, (email,))
+                    row = cur.fetchone()
+                    cur.close()
+                    conn.close()
+                    if row:
+                        user_name = f"{row[0]} {row[1]}"
+                        user_code = row[2]
+            except Exception:
+                pass
     else:
         nav_items = []
-        user_name = ""
-        user_code = ""
 
     return {
         "role": role,
@@ -60,6 +103,7 @@ def base_context(role, current_page, page_title):
         "nav_items": nav_items,
         "user_name": user_name,
         "user_code": user_code,
+        "user_initials": get_initials(user_name),
     }
 
 
@@ -67,7 +111,7 @@ def base_context(role, current_page, page_title):
 # GUEST VIEWS
 # ---------------------------------------------------------------------------
 def guest_home(request):
-    context = base_context(role="guest", current_page="Redeem Hadiah", page_title="Guest View")
+    context = base_context(role="guest", current_page="Redeem Hadiah", page_title="Guest View", request=request)
     return render(request, "member/redeem_hadiah.html", context)
 
 
@@ -95,7 +139,7 @@ def member_redeem_hadiah(request):
     ]
     selected_hadiah = hadiah_list[2]
     member_award_miles = 5000
-    context = base_context(role="member", current_page="Redeem Hadiah", page_title="Redeem Hadiah")
+    context = base_context(role="member", current_page="Redeem Hadiah", page_title="Redeem Hadiah", request=request)
     context.update({
         "member_award_miles": member_award_miles,
         "hadiah_list": hadiah_list,
@@ -119,7 +163,7 @@ def member_beli_package(request):
     ]
     selected_package = packages[2]
     member_award_miles = 5000
-    context = base_context(role="member", current_page="Beli Package", page_title="Beli Award Miles Package")
+    context = base_context(role="member", current_page="Beli Package", page_title="Beli Award Miles Package", request=request)
     context.update({
         "member_award_miles": member_award_miles,
         "packages": packages,
@@ -141,7 +185,7 @@ def member_info_tier(request):
         "nama": "Citra Dewi", "nomor_member": "M0003", "current_tier": "Silver",
         "tier_miles": 30000, "flight_frequency": 14, "next_tier": "Gold", "miles_to_next_tier": 20000,
     }
-    context = base_context(role="member", current_page="Info Tier", page_title="Informasi Tier & Keuntungan")
+    context = base_context(role="member", current_page="Info Tier", page_title="Informasi Tier & Keuntungan", request=request)
     context.update({"tier_list": tier_list, "current_member": current_member})
     return render(request, "member/info_tier.html", context)
 
@@ -233,7 +277,7 @@ def staff_laporan_transaksi(request):
     except Exception as e:
         sp_message = f"Error: {str(e)}"
 
-    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles")
+    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles", request=request)
     context.update({
         "transactions": transactions,
         "top_total_miles": top_total_miles,
@@ -251,11 +295,10 @@ def kelola_hadiah(request):
     user = get_current_user(request)
     if not user or get_role(user.email) != 'staff':
         return redirect('login')
-    return render(request, 'staff/kelola_hadiah.html', {
-        'user': user,
-        'nav_items': staff_nav_items(),
-        'role': 'staff'
-    })
+    ctx = base_context(role="staff", current_page="Kelola Hadiah & Penyedia",
+                       page_title="Kelola Hadiah", request=request)
+    ctx['user'] = user
+    return render(request, 'staff/kelola_hadiah.html', ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -389,11 +432,10 @@ def kelola_mitra(request):
     user = get_current_user(request)
     if not user or get_role(user.email) != 'staff':
         return redirect('login')
-    return render(request, 'staff/kelola_mitra.html', {
-        'user': user,
-        'nav_items': staff_nav_items(),
-        'role': 'staff'
-    })
+    ctx = base_context(role="staff", current_page="Kelola Mitra",
+                       page_title="Kelola Mitra", request=request)
+    ctx['user'] = user
+    return render(request, 'staff/kelola_mitra.html', ctx)
 
 
 # ---------------------------------------------------------------------------
