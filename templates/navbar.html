@@ -116,10 +116,12 @@
                         </p>
                     </div>
 
-                    <a href="{% url 'logout' %}"
-                       class="whitespace-nowrap ml-2 px-3 py-2 rounded-full text-xs border border-white/20 text-white/100 hover:bg-white/10 hover:text-white transition font-bold bg-red-600">
+                    <a href="#"
+                    onclick="openLogoutModal()"
+                    class="whitespace-nowrap ml-2 px-3 py-2 rounded-full text-xs border border-white/20 text-white/100 hover:bg-white/10 hover:text-white transition font-bold bg-red-600">
                         Logout
                     </a>
+
 
                 </div>
 
@@ -188,6 +190,42 @@
         {% endif %}
     </div>
 </nav>
+<div id="logoutModal"
+     class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-gray-900">
+                Konfirmasi Logout
+            </h2>
+
+            <button onclick="closeLogoutModal()"
+                    class="text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-6">
+            Apakah kamu yakin ingin logout?
+        </p>
+
+        <div class="flex justify-end gap-3">
+
+            <button onclick="closeLogoutModal()"
+                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition">
+                Batal
+            </button>
+
+            <a href="{% url 'logout' %}"
+               class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition">
+                Logout
+            </a>
+
+        </div>
+
+    </div>
+</div>
 
 <script>
     const mobileMenuButton = document.getElementById('mobileMenuButton');
@@ -196,4 +234,19 @@
     mobileMenuButton.addEventListener('click', () => {
         mobileMenu.classList.toggle('hidden');
     });
+    function openLogoutModal() {
+    document.getElementById('logoutModal').classList.remove('hidden');
+    }
+
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').classList.add('hidden');
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('logoutModal');
+
+        if (event.target === modal) {
+            closeLogoutModal();
+        }
+    }
 </script>

@@ -239,20 +239,27 @@ def member_beli_package(request):
         package_id = request.POST.get("package_id")
 
         try:
-            with connection.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO member_award_miles_package
-                        (id_award_miles_package, email_member, timestamp)
-                    VALUES (%s, %s, CURRENT_TIMESTAMP)
-                """, (package_id, email))
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "CALL sp_beli_award_miles_package(%s, %s, NULL)",
+                (email, package_id)
+            )
+            result = cur.fetchone()
+            pesan = result[0] if result else None
+            conn.commit()
 
-            messages.success(request, "Pembelian package berhasil diproses.")
+            if pesan:
+                messages.success(request, pesan)
+
+            cur.close()
+            conn.close()
             return redirect("/rewards/member/beli-package/")
 
         except Exception as e:
-            messages.error(request, str(e))
+            conn.rollback()
+            messages.error(request, str(e).split('\n')[0])
             return redirect("/rewards/member/beli-package/")
-
     packages = fetch_all_dict("""
         SELECT id, jumlah_award_miles, harga_paket
         FROM award_miles_package
