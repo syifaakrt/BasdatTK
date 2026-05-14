@@ -7,6 +7,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from db import get_connection
 
+def get_initials(name):
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return parts[0][0].upper() + parts[1][0].upper()
+    return parts[0][:2].upper() if parts else "?"
 
 def _get_session_email(request):
     return request.session.get("user_email") or request.session.get("email")
@@ -124,7 +129,7 @@ def base_context(role, current_page, page_title, user_info=None):
 # GUEST VIEWS
 # ---------------------------------------------------------------------------
 def guest_home(request):
-    context = base_context(role="guest", current_page="Redeem Hadiah", page_title="Guest View")
+    context = base_context(role="guest", current_page="Redeem Hadiah", page_title="Guest View", request=request)
     return render(request, "member/redeem_hadiah.html", context)
 
 
@@ -421,7 +426,7 @@ def staff_laporan_transaksi(request):
     except Exception as e:
         sp_message = f"Error: {str(e)}"
 
-    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles")
+    context = base_context(role="staff", current_page="Laporan Transaksi", page_title="Laporan & Riwayat Transaksi Miles", request=request)
     context.update({
         "transactions": transactions,
         "top_total_miles": top_total_miles,
