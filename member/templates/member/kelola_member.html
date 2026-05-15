@@ -14,7 +14,7 @@
 
 <div class="min-h-screen font-sans text-gray-800">
 
-    <main class="px-10 py-12 max-w-7xl mx-auto">
+    <main class="px-4 sm:px-10 py-8 sm:py-12 max-w-7xl mx-auto">
 
         {% if messages %}
             {% for message in messages %}
@@ -30,26 +30,24 @@
             {% endfor %}
         {% endif %}
 
-        <!-- HEADER -->
-        <div class="flex justify-between items-center mb-7">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-7">
 
-            <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2">
+            <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2 sm:mb-0">
                 Kelola Member
             </h1>
 
             <button
                 onclick="openModal('modalTambah')"
-                class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-3 rounded-xl text-sm font-semibold transition shadow-sm"
+                class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-3 rounded-xl text-sm font-semibold transition shadow-sm w-full sm:w-auto"
             >
                 <i class="fa-solid fa-plus mr-2"></i>
                 Tambah Member
             </button>
         </div>
 
-        <!-- SEARCH + FILTER -->
-        <div class="flex gap-4 mb-5">
+        <div class="flex flex-col sm:flex-row gap-4 mb-5">
 
-            <div class="relative flex-1">
+            <div class="relative flex-1 w-full">
 
                 <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
 
@@ -62,12 +60,12 @@
                 >
             </div>
 
-            <div class="relative">
+            <div class="relative w-full sm:w-[160px]">
 
                 <select
                     id="tierFilter"
                     onchange="filterTable()"
-                    class="border border-gray-300 rounded-xl pl-4 pr-10 py-3 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer w-[160px]"
+                    class="border border-gray-300 rounded-xl pl-4 pr-10 py-3 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer w-full"
                 >
                     <option value="">Semua Tier</option>
                     <option value="Gold">Gold</option>
@@ -79,150 +77,140 @@
             </div>
         </div>
 
-        <!-- TABLE -->
         <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
 
-            <table class="w-full text-left text-sm">
+                    <thead class="bg-[#f9fafb] border-b border-gray-200 text-gray-700 font-semibold">
+                        <tr>
+                            <th class="px-6 py-5">No. Member</th>
+                            <th class="px-6 py-5">Nama</th>
+                            <th class="px-6 py-5">Email</th>
+                            <th class="px-6 py-5">Tier</th>
+                            <th class="px-6 py-5">Total Miles</th>
+                            <th class="px-6 py-5">Award Miles</th>
+                            <th class="px-6 py-5">Bergabung</th>
+                            <th class="px-6 py-5">Aksi</th>
+                        </tr>
+                    </thead>
 
-                <thead class="bg-[#f9fafb] border-b border-gray-200 text-gray-700 font-semibold">
-                    <tr>
-                        <th class="px-6 py-5">No. Member</th>
-                        <th class="px-6 py-5">Nama</th>
-                        <th class="px-6 py-5">Email</th>
-                        <th class="px-6 py-5">Tier</th>
-                        <th class="px-6 py-5">Total Miles</th>
-                        <th class="px-6 py-5">Award Miles</th>
-                        <th class="px-6 py-5">Bergabung</th>
-                        <th class="px-6 py-5">Aksi</th>
-                    </tr>
-                </thead>
+                    <tbody id="memberTableBody" class="divide-y divide-gray-100">
 
-                <tbody id="memberTableBody" class="divide-y divide-gray-100">
+                        {% for m in members %}
+                        <tr
+                            class="hover:bg-gray-50 transition member-row"
+                            data-nama="{{ m.1 }} {{ m.2 }} {{ m.3 }}"
+                            data-email="{{ m.4 }}"
+                            data-nomor="{{ m.0 }}"
+                            data-tier="{{ m.5 }}"
+                        >
 
-                    {% for m in members %}
-                    <tr
-                        class="hover:bg-gray-50 transition member-row"
-                        data-nama="{{ m.1 }} {{ m.2 }} {{ m.3 }}"
-                        data-email="{{ m.4 }}"
-                        data-nomor="{{ m.0 }}"
-                        data-tier="{{ m.5 }}"
-                    >
+                            <td class="px-6 py-5 font-bold text-[#0c2340]">
+                                {{ m.0 }}
+                            </td>
 
-                        <!-- NO MEMBER -->
-                        <td class="px-6 py-5 font-bold text-[#0c2340]">
-                            {{ m.0 }}
-                        </td>
+                            <td class="px-6 py-5">
+                                {{ m.1 }} {{ m.2 }} {{ m.3 }}
+                            </td>
 
-                        <!-- NAMA -->
-                        <td class="px-6 py-5">
-                            {{ m.1 }} {{ m.2 }} {{ m.3 }}
-                        </td>
+                            <td class="px-6 py-5">
+                                {{ m.4 }}
+                            </td>
 
-                        <!-- EMAIL -->
-                        <td class="px-6 py-5">
-                            {{ m.4 }}
-                        </td>
+                            <td class="px-6 py-5">
 
-                        <!-- TIER -->
-                        <td class="px-6 py-5">
+                                {% if m.5 == 'T004' %}
+                                    <span class="bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                        Platinum
+                                    </span>
 
-                            {% if m.5 == 'T004' %}
-                                <span class="bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-bold">
-                                    Platinum
-                                </span>
+                                {% elif m.5 == 'T003' %}
+                                    <span class="bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                        Gold
+                                    </span>
 
+                                {% elif m.5 == 'T002' %}
+                                    <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold">
+                                        Silver
+                                    </span>
 
-                            {% elif m.5 == 'T003' %}
-                                <span class="bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                                    Gold
-                                </span>
+                                {% else %}
+                                    <span class="bg-blue-400 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                        Blue
+                                    </span>
+                                {% endif %}
 
-                            {% elif m.5 == 'T002' %}
-                                <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold">
-                                    Silver
-                                </span>
+                            </td>
 
-                            {% else %}
-                                <span class="bg-blue-400 text-white px-3 py-1 rounded-full text-xs font-bold">
-                                    Blue
-                                </span>
-                            {% endif %}
+                            <td class="px-6 py-5">
+                                {{ m.6 }}
+                            </td>
 
-                        </td>
+                            <td class="px-6 py-5">
+                                {{ m.7 }}
+                            </td>
 
-                        <!-- TOTAL -->
-                        <td class="px-6 py-5">
-                            {{ m.6 }}
-                        </td>
+                            <td class="px-6 py-5">
+                                {{ m.8 }}
+                            </td>
 
-                        <!-- AWARD -->
-                        <td class="px-6 py-5">
-                            {{ m.7 }}
-                        </td>
+                            <td class="px-6 py-5">
 
-                        <!-- BERGABUNG -->
-                        <td class="px-6 py-5">
-                            {{ m.8 }}
-                        </td>
+                                <div class="flex items-center gap-4">
 
-                        <!-- AKSI -->
-                        <td class="px-6 py-5">
+                                    <button
+                                        onclick="openEditModal(
+                                            '{{ m.4 }}',
+                                            '{{ m.1 }}',
+                                            '{{ m.2 }}',
+                                            '{{ m.3 }}',
+                                            '{{ m.5 }}',
+                                            '{{ m.9 }}',
+                                            '{{ m.10 }}',
+                                            '{{ m.11 }}'
+                                        )"
+                                        class="text-gray-500 hover:text-blue-600 transition"
+                                    >
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
 
-                            <div class="flex items-center gap-4">
+                                    <button
+                                        onclick="openHapusModal(
+                                            '{{ m.4 }}',
+                                            '{{ m.1 }} {{ m.2 }} {{ m.3 }}'
+                                        )"
+                                        class="text-gray-500 hover:text-red-600 transition"
+                                    >
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
 
-                                <button
-                                    onclick="openEditModal(
-                                        '{{ m.4 }}',
-                                        '{{ m.1 }}',
-                                        '{{ m.2 }}',
-                                        '{{ m.3 }}',
-                                        '{{ m.5 }}',
-                                        '{{ m.9 }}',
-                                        '{{ m.10 }}',
-                                        '{{ m.11 }}'
-                                    )"
-                                    class="text-gray-500 hover:text-blue-600 transition"
-                                >
-                                    <i class="fa-solid fa-pen"></i>
-                                </button>
+                                </div>
+                            </td>
 
-                                <button
-                                    onclick="openHapusModal(
-                                        '{{ m.4 }}',
-                                        '{{ m.1 }} {{ m.2 }} {{ m.3 }}'
-                                    )"
-                                    class="text-gray-500 hover:text-red-600 transition"
-                                >
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
+                        </tr>
 
-                            </div>
-                        </td>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-16 text-gray-400">
+                                Belum ada data member.
+                            </td>
+                        </tr>
+                        {% endfor %}
 
-                    </tr>
+                    </tbody>
 
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="text-center py-16 text-gray-400">
-                            Belum ada data member.
-                        </td>
-                    </tr>
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
+                </table>
+            </div>
         </div>
 
     </main>
 
-    <!-- MODAL TAMBAH -->
     <div id="modalTambah"
-        class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center">
+        class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
 
-        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
 
-            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100">
+            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100 shrink-0">
 
                 <h2 class="text-lg font-bold text-[#0c2340]">
                     Tambah Member Baru
@@ -236,14 +224,14 @@
                 </button>
             </div>
 
-            <div class="p-6">
+            <div class="p-6 overflow-y-auto">
 
                 <form method="POST">
                     {% csrf_token %}
 
                     <input type="hidden" name="action" value="tambah">
 
-                    <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -287,7 +275,7 @@
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -316,7 +304,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -347,7 +335,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -378,19 +366,19 @@
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-3">
+                    <div class="flex flex-col sm:flex-row justify-end gap-3 mt-4">
 
                         <button
                             type="button"
                             onclick="closeModal('modalTambah')"
-                            class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50"
+                            class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 w-full sm:w-auto text-center"
                         >
                             Batal
                         </button>
 
                         <button
                             type="submit"
-                            class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition"
+                            class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition w-full sm:w-auto text-center"
                         >
                             Simpan
                         </button>
@@ -402,13 +390,12 @@
         </div>
     </div>
 
-    <!-- MODAL EDIT -->
     <div id="modalEdit"
-        class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center">
+        class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
 
-        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
 
-            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100">
+            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100 shrink-0">
 
                 <h2 class="text-lg font-bold text-[#0c2340]">
                     Edit Member
@@ -422,7 +409,7 @@
                 </button>
             </div>
 
-            <div class="p-6">
+            <div class="p-6 overflow-y-auto">
 
                 <form method="POST">
                     {% csrf_token %}
@@ -446,7 +433,7 @@
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -475,7 +462,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -507,7 +494,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
 
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
@@ -538,7 +525,7 @@
                             >
                         </div>
 
-                        <div>
+                        <div class="sm:col-span-2">
                             <label class="block text-xs font-semibold text-gray-700 mb-1">
                                 Tier
                             </label>
@@ -555,19 +542,19 @@
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-3">
+                    <div class="flex flex-col sm:flex-row justify-end gap-3 mt-4">
 
                         <button
                             type="button"
                             onclick="closeModal('modalEdit')"
-                            class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50"
+                            class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 w-full sm:w-auto text-center"
                         >
                             Batal
                         </button>
 
                         <button
                             type="submit"
-                            class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition"
+                            class="bg-[#0c3b7a] hover:bg-[#0a2f63] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition w-full sm:w-auto text-center"
                         >
                             Simpan
                         </button>
@@ -579,9 +566,8 @@
         </div>
     </div>
 
-    <!-- MODAL HAPUS -->
     <div id="modalHapus"
-        class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center">
+        class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
 
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
 
@@ -597,16 +583,16 @@
             <p class="text-sm font-semibold text-gray-800 mb-6"
                 id="hapusNamaLabel"></p>
 
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-4">
 
                 <button
                     onclick="closeModal('modalHapus')"
-                    class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50"
+                    class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 w-full sm:w-auto text-center"
                 >
                     Batal
                 </button>
 
-                <form method="POST">
+                <form method="POST" class="w-full sm:w-auto">
                     {% csrf_token %}
 
                     <input type="hidden" name="action" value="hapus">
@@ -614,7 +600,7 @@
 
                     <button
                         type="submit"
-                        class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition"
+                        class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition w-full text-center"
                     >
                         Hapus
                     </button>

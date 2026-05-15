@@ -9,12 +9,18 @@
     .form-group input, .form-group select {
         padding: 10px 13px; border: 1px solid #ddd; border-radius: 8px;
         font-size: 0.88rem; outline: none; transition: border 0.2s; background: #fff;
+        width: 100%; box-sizing: border-box;
     }
     .form-group input:focus, .form-group select:focus { border-color: #0f2044; }
     /* Memastikan input readonly terlihat abu-abu dan tidak bisa diklik */
     .form-group input[readonly] { background: #f8f9fa; color: #888; cursor: not-allowed; }
     
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    /* Responsivitas untuk Form Row */
+    .form-row { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 640px) {
+        .form-row { grid-template-columns: 1fr 1fr; }
+    }
+
     .btn { padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 600; }
     .btn-primary { background: #0f2044; color: white; }
     .btn-primary:hover { background: #1a3a6e; }
@@ -23,16 +29,21 @@
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; justify-content: center; align-items: center; }
     .modal-overlay.active { display: flex; }
-    .modal { background: white; border-radius: 14px; padding: 28px; width: 420px; max-width: 95%; }
+    .modal { background: white; border-radius: 14px; padding: 28px; width: 420px; max-width: 90%; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
     .modal-header h2 { font-size: 1.05rem; color: #0f2044; font-weight: 700; }
     .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999; }
     .modal .form-group { margin-bottom: 16px; }
+
+    /* Penyesuaian padding card untuk layar kecil */
+    @media (max-width: 480px) {
+        .card { padding: 20px; }
+    }
 </style>
 
-<div class="container mx-auto" style="max-width: 700px;">
+<div class="container mx-auto px-4 sm:px-0" style="max-width: 700px;">
     {% if messages %}
-    <div class="flex flex-col gap-3 mb-5">
+    <div class="flex flex-col gap-3 mb-5 mt-4">
         {% for message in messages %}
             {% if message.tags == 'success' %}
             <div class="bg-green-100 text-green-800 border border-green-300 px-4 py-3 rounded-lg text-sm font-semibold">
@@ -47,8 +58,7 @@
     </div>
     {% endif %}
 
-    <div class="text-center w-100 py-6 text-3xl font-bold text-[#0b1f3a] mb-2">Pengaturan Profil</div>
-
+    <div class="text-center w-100 py-6 text-2xl sm:text-3xl font-bold text-[#0b1f3a] mb-2">Pengaturan Profil</div>
 
     <div class="card">
         <div class="card-title">Data Profil</div>
@@ -88,7 +98,8 @@
                         <option value="Dr." {% if profil.1 == 'Dr.' %}selected{% endif %}>Dr.</option>
                     </select>
                 </div>
-                <div class="form-group"></div> </div>
+                <div class="form-group hidden sm:block"></div> 
+            </div>
 
             <div class="form-row">
                 <div class="form-group">
@@ -142,21 +153,21 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group"></div> </div>
+                <div class="form-group hidden sm:block"></div> 
+            </div>
             {% endif %}
 
-            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Simpan Perubahan</button>
+            <button type="submit" class="btn btn-primary w-full sm:w-auto mt-2">Simpan Perubahan</button>
         </form>
     </div>
 
-    <div class="card w-fit">
+    <div class="card w-full sm:w-fit">
         <div class="card-title">Ubah Password</div>
-        <button class="btn btn-secondary" onclick="openModal('modalPassword')">Ubah Password</button>
+        <button class="btn btn-secondary w-full sm:w-auto" onclick="openModal('modalPassword')">Ubah Password</button>
     </div>
 </div>
 
-    <!-- Modal Ubah Password -->
-<div class="modal-overlay " id="modalPassword">
+<div class="modal-overlay" id="modalPassword">
     <div class="modal">
         <div class="modal-header">
             <h2>Ubah Password</h2>
@@ -176,9 +187,9 @@
                 <label>Konfirmasi Password Baru</label>
                 <input type="password" name="konfirmasi_password" required>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('modalPassword')" style="margin-right:10px;">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+            <div class="flex flex-col sm:flex-row justify-end mt-4 gap-2 sm:gap-0">
+                <button type="button" class="btn btn-secondary w-full sm:w-auto sm:mr-2" onclick="closeModal('modalPassword')">Batal</button>
+                <button type="submit" class="btn btn-primary w-full sm:w-auto">Simpan</button>
             </div>
         </form>
     </div>
