@@ -1,7 +1,6 @@
 <nav class="bg-[#0b1f3a] text-white shadow-lg">
-    <div class="w-full max-w-[1700px] mx-auto px-40 py-4 flex items-center justify-between gap-8">
+    <div class="w-full max-w-[1700px] mx-auto px-4 md:px-8 lg:px-40 py-4 flex items-center justify-between gap-4 lg:gap-8">
 
-        <!-- LOGO -->
         <a href="/" class="flex items-center gap-3 shrink-0">
             <div class="w-11 h-11 rounded-xl bg-white text-[#0b1f3a] flex items-center justify-center font-bold text-sm select-none">
                 AM
@@ -22,7 +21,6 @@
             </div>
         </a>
 
-        <!-- NAVIGATION -->
         <div class="hidden lg:flex items-center gap-1 flex-1 justify-center min-w-0">
 
             {% if not role or role == "guest" %}
@@ -30,9 +28,9 @@
                 <a href="/"
                    class="whitespace-nowrap px-4 py-2 rounded-full text-sm transition
                    {% if current_page == 'Beranda' %}
-                        bg-white/20 text-white font-semibold
+                       bg-white/20 text-white font-semibold
                    {% else %}
-                        text-white/80 hover:bg-white/10 hover:text-white
+                       text-white/80 hover:bg-white/10 hover:text-white
                    {% endif %}">
                     Beranda
                 </a>
@@ -40,9 +38,9 @@
                 <a href="#"
                    class="whitespace-nowrap px-4 py-2 rounded-full text-sm transition
                    {% if current_page == 'Tentang AeroMiles' %}
-                        bg-white/20 text-white font-semibold
+                       bg-white/20 text-white font-semibold
                    {% else %}
-                        text-white/80 hover:bg-white/10 hover:text-white
+                       text-white/80 hover:bg-white/10 hover:text-white
                    {% endif %}">
                     Tentang AeroMiles
                 </a>
@@ -50,9 +48,9 @@
                 <a href="#"
                    class="whitespace-nowrap px-4 py-2 rounded-full text-sm transition
                    {% if current_page == 'Info Program' %}
-                        bg-white/20 text-white font-semibold
+                       bg-white/20 text-white font-semibold
                    {% else %}
-                        text-white/80 hover:bg-white/10 hover:text-white
+                       text-white/80 hover:bg-white/10 hover:text-white
                    {% endif %}">
                     Info Program
                 </a>
@@ -74,7 +72,6 @@
             {% endif %}
         </div>
 
-        <!-- RIGHT -->
         <div class="hidden lg:flex items-center shrink-0">
 
             {% if not role or role == "guest" %}
@@ -128,15 +125,13 @@
             {% endif %}
         </div>
 
-        <!-- MOBILE MENU BUTTON -->
         <button id="mobileMenuButton"
-                class="lg:hidden text-white text-xl">
+                class="lg:hidden text-white text-xl p-2">
             <i class="fa-solid fa-bars"></i>
         </button>
 
     </div>
 
-    <!-- MOBILE MENU -->
     <div id="mobileMenu"
          class="hidden lg:hidden border-t border-white/10 px-6 py-4 space-y-2">
 
@@ -156,12 +151,12 @@
 
             <div class="pt-3 flex gap-2">
                 <a href="{% url 'login' %}"
-                   class="px-4 py-2 rounded-full text-sm border border-white/20">
+                   class="px-4 py-2 rounded-full text-sm border border-white/20 flex-1 text-center">
                     Masuk
                 </a>
 
                 <a href="{% url 'register' %}"
-                   class="px-4 py-2 rounded-full text-sm bg-white text-[#0b1f3a] font-semibold">
+                   class="px-4 py-2 rounded-full text-sm bg-white text-[#0b1f3a] font-semibold flex-1 text-center">
                     Daftar
                 </a>
             </div>
@@ -190,10 +185,11 @@
         {% endif %}
     </div>
 </nav>
+
 <div id="logoutModal"
      class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
 
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
 
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold text-gray-900">
@@ -234,8 +230,9 @@
     mobileMenuButton.addEventListener('click', () => {
         mobileMenu.classList.toggle('hidden');
     });
+
     function openLogoutModal() {
-    document.getElementById('logoutModal').classList.remove('hidden');
+        document.getElementById('logoutModal').classList.remove('hidden');
     }
 
     function closeLogoutModal() {
