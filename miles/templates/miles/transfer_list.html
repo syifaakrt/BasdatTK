@@ -1,18 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 12px; }
     .award-info { font-size: 0.9rem; color: #555; margin-bottom: 24px; }
     .award-info strong { color: #0f2044; }
-    .btn { padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+    .btn { padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 0.85rem; font-weight: 600; text-align: center; }
     .btn-primary { background: #0f2044; color: white; }
     .btn-secondary { background: #f0f0f0; color: #333; }
     .card { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th { padding: 13px 16px; text-align: left; font-size: 0.8rem; font-weight: 600; color: #666; border-bottom: 2px solid #f0f0f0; }
-    tbody td { padding: 13px 16px; font-size: 0.85rem; border-bottom: 1px solid #f7f7f7; }
+    
+    .table-responsive { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    thead th { padding: 13px 16px; text-align: left; font-size: 0.8rem; font-weight: 600; color: #666; border-bottom: 2px solid #f0f0f0; white-space: nowrap; }
+    tbody td { padding: 13px 16px; font-size: 0.85rem; border-bottom: 1px solid #f7f7f7; white-space: nowrap; }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover { background: #fafbff; }
+    
     .member-email { font-size: 0.75rem; color: #888; }
     .miles-kirim { color: #e74c3c; font-weight: 700; }
     .miles-terima { color: #27ae60; font-weight: 700; }
@@ -21,9 +24,10 @@
     .lock-icon { color: #bbb; font-size: 0.9rem; }
     .empty-state { text-align: center; padding: 48px; color: #aaa; font-size: 0.9rem; }
 
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; justify-content: center; align-items: center; }
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box; }
     .modal-overlay.active { display: flex; }
-    .modal { background: white; border-radius: 14px; padding: 28px; width: 420px; max-width: 95%; }
+    .modal { background: white; border-radius: 14px; padding: 28px; width: 420px; max-width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
     .modal-header h2 { font-size: 1.05rem; color: #0f2044; font-weight: 700; }
     .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999; }
@@ -31,16 +35,28 @@
     .form-group label { font-size: 0.82rem; font-weight: 600; color: #555; }
     .form-group input, .form-group textarea {
         padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px;
-        font-size: 0.88rem; outline: none;
+        font-size: 0.88rem; outline: none; width: 100%; box-sizing: border-box;
     }
     .form-group input:focus, .form-group textarea:focus { border-color: #0f2044; }
     .form-group textarea { resize: vertical; min-height: 70px; }
     .modal-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+    .sub-header-row { display: flex; align-items: center; width: 100%; padding-top: 12px; padding-bottom: 8px; flex-wrap: wrap; gap: 12px; }
+    .sub-header-row .btn { margin-left: auto; }
+
+    @media (max-width: 480px) {
+        .page-header { flex-direction: column; align-items: flex-start; }
+        .page-header h1 { font-size: 1.5rem; margin-bottom: 8px; }
+        .page-header .bg-white { width: 100%; }
+        .sub-header-row { flex-direction: column; align-items: flex-start; }
+        .sub-header-row .btn { margin-left: 0; width: 100%; }
+        .modal { padding: 20px; }
+    }
 </style>
 
-<div class="container">
+<div class="container mx-auto px-4 sm:px-0">
     {% if messages %}
-    <div class="flex flex-col gap-3 mb-5">
+    <div class="flex flex-col gap-3 mb-5 mt-4">
         {% for message in messages %}
             {% if message.tags == 'success' %}
             <div class="bg-green-100 text-green-800 border border-green-300 px-4 py-3 rounded-lg text-sm font-semibold">
@@ -55,70 +71,71 @@
     </div>
     {% endif %}
 
-    <div class="page-header">
-        <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2">Transfer Miles</h1>
+    <div class="page-header mt-4">
+        <h1 class="text-2xl sm:text-3xl font-bold text-[#0b1f3a] mb-0">Transfer Miles</h1>
         <div class="bg-white border border-gray-100 rounded-2xl shadow px-6 py-4 min-w-[200px]">
             <span class="block text-xs text-gray-500 mb-1">Award Miles Saat Ini</span>
-            <strong class="text-3xl font-bold text-[#0b1f3a]">{{ award_miles }}</strong>
+            <strong class="text-2xl sm:text-3xl font-bold text-[#0b1f3a]">{{ award_miles }}</strong>
         </div>
     </div>
 
-    <div style="display:flex; align-items:center; width:100%; padding-top: 12px; padding-bottom: 8px;">
-        <span class="text-2xl font-medium">Riwayat Transfer</span>
+    <div class="sub-header-row">
+        <span class="text-xl sm:text-2xl font-medium">Riwayat Transfer</span>
 
         <button 
             class="btn btn-primary"
-            style="margin-left:auto;"
             onclick="openModal('modalTransfer')">
             + Transfer Baru
         </button>
     </div>    
+
     <div class="card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Waktu</th>
-                    <th>Member</th>
-                    <th>Jumlah Miles</th>
-                    <th>Catatan</th>
-                    <th>Tipe</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in transfers %}
-                <tr>
-                    <td>{{ t.0|date:"Y-m-d H:i" }}</td>
-                    <td>
-                        <div>{{ t.1 }}</div>
-                        <div class="member-email">{{ t.2 }}</div>
-                    </td>
-                    <td>
-                        {% if t.5 == 'Kirim' %}
-                        <span class="miles-kirim">-{{ t.3 }}</span>
-                        {% else %}
-                        <span class="miles-terima">+{{ t.3 }}</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ t.4|default:"-" }}</td>
-                    <td>
-                        {% if t.5 == 'Kirim' %}
-                        <span class="badge-kirim">Kirim</span>
-                        {% else %}
-                        <span class="badge-terima">Terima</span>
-                        {% endif %}
-                    </td>
-                    <td><span class="lock-icon">🔒</span></td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" class="empty-state">Belum ada riwayat transfer.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Member</th>
+                        <th>Jumlah Miles</th>
+                        <th>Catatan</th>
+                        <th>Tipe</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transfers %}
+                    <tr>
+                        <td>{{ t.0|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <div>{{ t.1 }}</div>
+                            <div class="member-email">{{ t.2 }}</div>
+                        </td>
+                        <td>
+                            {% if t.5 == 'Kirim' %}
+                            <span class="miles-kirim">-{{ t.3 }}</span>
+                            {% else %}
+                            <span class="miles-terima">+{{ t.3 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ t.4|default:"-" }}</td>
+                        <td>
+                            {% if t.5 == 'Kirim' %}
+                            <span class="badge-kirim">Kirim</span>
+                            {% else %}
+                            <span class="badge-terima">Terima</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="lock-icon">🔒</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty-state">Belum ada riwayat transfer.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<!-- Modal Transfer -->
 <div class="modal-overlay" id="modalTransfer">
     <div class="modal">
         <div class="modal-header">
@@ -133,7 +150,7 @@
             </div>
             <div class="form-group">
                 <label>Jumlah Miles</label>
-                <input type="number" name="jumlah" min="1">
+                <input type="number" name="jumlah" min="1" required>
             </div>
             <div class="form-group">
                 <label>Catatan (opsional)</label>

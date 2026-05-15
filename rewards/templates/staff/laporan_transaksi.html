@@ -4,7 +4,6 @@
 
 {% block content %}
 
-<!-- Page Header -->
 <div class="mb-8">
     <h1 class="text-3xl font-bold text-[#0b1f3a] mb-2">Laporan & Riwayat Transaksi Miles</h1>
     <p class="text-gray-500 max-w-xl leading-relaxed">
@@ -12,7 +11,6 @@
     </p>
 </div>
 
-<!-- Stats Cards -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
     <div class="bg-[#0b1f3a] text-white rounded-2xl shadow p-6">
         <span class="text-xs font-bold uppercase tracking-widest text-white/60 block mb-2">Total Miles Beredar</span>
@@ -41,7 +39,6 @@
 </div>
 {% endif %}
 
-<!-- Filter -->
 <div class="bg-white border border-gray-100 rounded-2xl shadow p-6 mb-6">
     <div class="flex items-center justify-between mb-5">
         <h2 class="text-lg font-bold text-[#0b1f3a]">Filter Transaksi</h2>
@@ -92,11 +89,10 @@
     </div>
 </div>
 
-<!-- Transaksi Table -->
 <div class="bg-white border border-gray-100 rounded-2xl shadow p-6 mb-6">
     <div class="flex items-center justify-between mb-5">
         <h2 class="text-lg font-bold text-[#0b1f3a]">Rekap Transaksi Miles</h2>
-        <span class="px-3 py-1.5 rounded-full bg-[#edf4fb] text-[#0b1f3a] text-xs font-bold">{{ transactions|length }} baris</span>
+        <span class="px-3 py-1.5 rounded-full bg-[#edf4fb] text-[#0b1f3a] text-xs font-bold" id="total-rows-badge">{{ transactions|length }} baris</span>
     </div>
 
     <div class="overflow-x-auto">
@@ -112,7 +108,7 @@
             </thead>
             <tbody id="transaction-table-body">
                 {% for item in transactions %}
-                <tr class="border-b border-gray-100 hover:bg-gray-50 transition" data-transaction-row>
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition" data-transaction-row style="display: none;">
                     <td class="px-4 py-3 text-gray-800" data-column="type">{{ item.tipe }}</td>
                     <td class="px-4 py-3 text-gray-600 text-xs" data-column="member">{{ item.member }}</td>
                     <td class="px-4 py-3 font-bold text-[#0b1f3a]">{{ item.jumlah_miles }}</td>
@@ -134,13 +130,18 @@
         </table>
     </div>
 
+    <div class="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 mt-4 pt-4 gap-4">
+        <span class="text-sm text-gray-500" id="pagination-info">Menampilkan 0-0 dari 0 transaksi</span>
+        <div class="flex gap-2" id="pagination-buttons">
+            </div>
+    </div>
+
     <div class="mt-5 p-4 rounded-xl bg-amber-50 text-amber-800 text-sm leading-relaxed" id="transaction-feedback">
         <strong>Peringatan:</strong>
         Penghapusan riwayat transaksi bersifat permanen dan akan memengaruhi tampilan riwayat yang dilihat member.
     </div>
 </div>
 
-<!-- Top Member Tables -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="bg-white border border-gray-100 rounded-2xl shadow p-6">
         <div class="flex items-center justify-between mb-5">
@@ -228,39 +229,94 @@
         const typeSelect    = document.getElementById("tipe");
         const memberSelect  = document.getElementById("member");
         const applyButton   = document.getElementById("apply-filter-button");
-        const rows          = document.querySelectorAll("[data-transaction-row]");
+        const rows          = Array.from(document.querySelectorAll("[data-transaction-row]"));
         const feedback      = document.getElementById("transaction-feedback");
+        const badge         = document.getElementById("total-rows-badge");
+        
+        // Modal elements
         const modal         = document.getElementById("modalHapus");
         const modalTipe     = document.getElementById("modal-tipe");
         const modalMember   = document.getElementById("modal-member");
         const modalCancel   = document.getElementById("modal-cancel");
         const modalConfirm  = document.getElementById("modal-confirm");
 
+        // Pagination variables
+        const rowsPerPage = 20; // Jumlah item per halaman
+        let currentPage = 1;
+        let filteredRows = [...rows]; 
         let pendingRow = null;
 
-        // --- Filter ---
+        function renderTable() {
+            rows.forEach(row => row.style.display = "none");
+
+            const totalRows = filteredRows.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+
+            const rowsToShow = filteredRows.slice(startIndex, endIndex);
+            rowsToShow.forEach(row => row.style.display = "");
+
+            badge.textContent = `${totalRows} baris`;
+            
+            const startItemInfo = totalRows === 0 ? 0 : startIndex + 1;
+            const endItemInfo = Math.min(endIndex, totalRows);
+            document.getElementById("pagination-info").textContent = `Menampilkan ${startItemInfo}-${endItemInfo} dari ${totalRows} transaksi`;
+
+            renderPaginationButtons(totalPages);
+        }
+
+        function renderPaginationButtons(totalPages) {
+            const btnContainer = document.getElementById("pagination-buttons");
+            btnContainer.innerHTML = "";
+
+            const prevBtn = document.createElement("button");
+            prevBtn.textContent = "Sebelumnya";
+            prevBtn.className = `px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md transition ${currentPage === 1 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white text-[#0b1f3a] hover:bg-gray-50'}`;
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) { currentPage--; renderTable(); }
+            };
+            btnContainer.appendChild(prevBtn);
+
+            const nextBtn = document.createElement("button");
+            nextBtn.textContent = "Selanjutnya";
+            nextBtn.className = `px-3 py-1.5 text-sm font-medium border border-gray-200 rounded-md transition ${currentPage === totalPages || totalPages === 0 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white text-[#0b1f3a] hover:bg-gray-50'}`;
+            nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) { currentPage++; renderTable(); }
+            };
+            btnContainer.appendChild(nextBtn);
+        }
+
         applyButton.addEventListener("click", () => {
             const selectedType   = typeSelect.value;
             const selectedMember = memberSelect.value;
-            let visibleRows = 0;
 
-            rows.forEach((row) => {
+            filteredRows = rows.filter((row) => {
+                if (row.classList.contains("deleted-row")) return false; // Abaikan yang sudah dihapus
+
                 const rowType   = row.querySelector('[data-column="type"]').textContent.trim();
                 const rowMember = row.querySelector('[data-column="member"]').textContent.trim();
                 const typeMatch   = selectedType === "Semua" || rowType === selectedType;
                 const memberMatch = selectedMember === "Semua Member" || rowMember === selectedMember;
-                const shouldShow  = typeMatch && memberMatch;
-                row.style.display = shouldShow ? "" : "none";
-                if (shouldShow) visibleRows++;
+                
+                return typeMatch && memberMatch;
             });
 
-            feedback.innerHTML = `<strong>Filter diterapkan:</strong> ${visibleRows} transaksi ditampilkan untuk kombinasi filter saat ini.`;
+            currentPage = 1;
+            renderTable();
+            feedback.innerHTML = `<strong>Filter diterapkan:</strong> Ditemukan ${filteredRows.length} transaksi untuk kombinasi filter saat ini.`;
         });
 
         // --- Buka modal hapus ---
         document.querySelectorAll("[data-delete-trigger]").forEach((button) => {
-            button.addEventListener("click", () => {
-                pendingRow = button.closest("[data-transaction-row]");
+            button.addEventListener("click", (e) => {
+                pendingRow = e.target.closest("[data-transaction-row]");
                 modalTipe.textContent   = pendingRow.querySelector('[data-column="type"]').textContent.trim();
                 modalMember.textContent = pendingRow.querySelector('[data-column="member"]').textContent.trim();
                 modal.classList.remove("hidden");
@@ -283,10 +339,19 @@
             if (!pendingRow) return;
             const tipe   = modalTipe.textContent;
             const member = modalMember.textContent;
-            pendingRow.remove();
+            
+            pendingRow.classList.add("deleted-row");
+            pendingRow.remove(); // Hapus element dari DOM
+            
+            filteredRows = filteredRows.filter(r => r !== pendingRow);
+            
+            renderTable();
+            
             feedback.innerHTML = `<strong>Riwayat diperbarui:</strong> transaksi ${tipe} milik ${member} telah dihapus dari tampilan laporan.`;
             closeModal();
         });
+
+        renderTable();
     });
 </script>
 {% endblock %}
