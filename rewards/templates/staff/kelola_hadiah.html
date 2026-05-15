@@ -105,9 +105,9 @@
 
 {% block extra_js %}
 <script>
-function openModal() { document.getElementById('modalForm').classList.remove('hidden'); document.getElementById('modalForm').classList.add('flex'); }
-function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('modalForm').classList.remove('flex'); }
-document.getElementById('modalForm').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+  function openModal() { document.getElementById('modalForm').classList.remove('hidden'); document.getElementById('modalForm').classList.add('flex'); }
+  function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('modalForm').classList.remove('flex'); }
+  document.getElementById('modalForm').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 </script>
 <script src="{% static 'rewards/js/script.js' %}"></script>
 <script>
