@@ -86,7 +86,8 @@ def kelola_member(request):
     # AMBIL DATA MEMBER
     cur.execute("""
         SELECT m.nomor_member, p.salutation, p.first_mid_name, p.last_name,
-               p.email, m.id_tier, m.total_miles, m.award_miles, m.tanggal_bergabung
+            p.email, m.id_tier, m.total_miles, m.award_miles, m.tanggal_bergabung,
+            p.mobile_number, p.tanggal_lahir, p.kewarganegaraan, p.country_code
         FROM member m
         JOIN pengguna p ON m.email = p.email
         ORDER BY m.nomor_member;
