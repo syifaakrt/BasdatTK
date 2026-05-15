@@ -31,7 +31,24 @@
 </style>
 
 <div class="container mx-auto" style="max-width: 700px;">
+    {% if messages %}
+    <div class="flex flex-col gap-3 mb-5">
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+            <div class="bg-green-100 text-green-800 border border-green-300 px-4 py-3 rounded-lg text-sm font-semibold">
+                {{ message }}
+            </div>
+            {% else %}
+            <div class="bg-red-100 text-red-800 border border-red-300 px-4 py-3 rounded-lg text-sm font-semibold">
+                {{ message }}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="text-center w-100 py-6 text-3xl font-bold text-[#0b1f3a] mb-2">Pengaturan Profil</div>
+
 
     <div class="card">
         <div class="card-title">Data Profil</div>
