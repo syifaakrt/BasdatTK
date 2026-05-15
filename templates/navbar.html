@@ -25,36 +25,6 @@
 
             {% if not role or role == "guest" %}
 
-                <a href="/"
-                   class="whitespace-nowrap px-4 py-2 rounded-full text-sm transition shrink-0
-                   {% if current_page == 'Beranda' %}
-                       bg-white/20 text-white font-semibold
-                   {% else %}
-                       text-white/80 hover:bg-white/10 hover:text-white
-                   {% endif %}">
-                    Beranda
-                </a>
-
-                <a href="#"
-                   class="whitespace-nowrap px-4 py-2 rounded-full text-sm transition shrink-0
-                   {% if current_page == 'Tentang AeroMiles' %}
-                       bg-white/20 text-white font-semibold
-                   {% else %}
-                       text-white/80 hover:bg-white/10 hover:text-white
-                   {% endif %}">
-                    Tentang AeroMiles
-                </a>
-
-                <a href="#"
-                   class="whitespace-nowrap px-4 py-2 rounded-full text-sm transition shrink-0
-                   {% if current_page == 'Info Program' %}
-                       bg-white/20 text-white font-semibold
-                   {% else %}
-                       text-white/80 hover:bg-white/10 hover:text-white
-                   {% endif %}">
-                    Info Program
-                </a>
-
             {% else %}
 
                 {% for item in nav_items %}
@@ -134,19 +104,6 @@
          class="hidden lg:hidden border-t border-white/10 px-6 py-4 space-y-2">
 
         {% if not role or role == "guest" %}
-
-            <a href="/" class="block py-2 text-white/80 hover:text-white">
-                Beranda
-            </a>
-
-            <a href="#" class="block py-2 text-white/80 hover:text-white">
-                Tentang AeroMiles
-            </a>
-
-            <a href="#" class="block py-2 text-white/80 hover:text-white">
-                Info Program
-            </a>
-
             <div class="pt-3 flex gap-2">
                 <a href="{% url 'login' %}"
                    class="px-4 py-2 rounded-full text-sm border border-white/20 flex-1 text-center">
