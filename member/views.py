@@ -138,20 +138,20 @@ def identitas(request):
             elif action == 'edit':
                 cur.execute("""
                     UPDATE identitas
-                    SET jenis = %s, negara_penerbit = %s,
+                    SET nomor = %s, jenis = %s, negara_penerbit = %s,
                         tanggal_terbit = %s, tanggal_habis = %s
                     WHERE nomor = %s AND email_member = %s
                 """, (
+                    request.POST.get('nomor_dokumen'),
                     request.POST.get('jenis_dokumen'),
                     request.POST.get('negara_penerbit'),
                     request.POST.get('tanggal_terbit'),
                     request.POST.get('tanggal_habis'),
-                    request.POST.get('identitas_id'),  # isi nomor dokumen
+                    request.POST.get('identitas_id'),
                     user_email,
                 ))
                 conn.commit()
                 django_messages.success(request, 'Identitas berhasil diperbarui.')
-
             elif action == 'hapus':
                 cur.execute("""
                     DELETE FROM identitas

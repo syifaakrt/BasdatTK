@@ -61,7 +61,7 @@
                             </td>
                             <td class="px-6 py-4 space-x-2">
                                 <button
-                                    onclick="openModalEdit('{{ item.0 }}', '{{ item.1 }}', '{{ item.2 }}', '{{ item.3 }}', '{{ item.4 }}', '{{ item.5 }}')"
+                                    onclick="openModalEdit('{{ item.0 }}', '{{ item.0 }}', '{{ item.1 }}', '{{ item.2 }}', '{{ item.3 }}', '{{ item.4 }}')"
                                     class="text-gray-500 hover:text-blue-600 transition-colors">
                                     <i class="fa-solid fa-pen"></i>
                                 </button>
@@ -112,7 +112,7 @@
                                 class="w-full border border-gray-300 rounded-md pl-3 pr-10 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer" required>
                                 <option value="KTP">KTP</option>
                                 <option value="SIM">SIM</option>
-                                <option value="Paspor">Paspor</option>
+                                <option value="Passport">Passport</option>
                             </select>
                             <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
                         </div>
@@ -126,6 +126,7 @@
                                 <option value="Indonesia">Indonesia</option>
                                 <option value="Malaysia">Malaysia</option>
                                 <option value="Singapura">Singapura</option>
+                                <option value="United States">United States</option>
                             </select>
                             <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
                         </div>
@@ -181,7 +182,7 @@
                                 class="w-full border border-gray-300 rounded-md pl-3 pr-10 py-2 text-sm bg-white focus:outline-none focus:border-[#0c3b7a] appearance-none cursor-pointer" required>
                                 <option value="KTP">KTP</option>
                                 <option value="SIM">SIM</option>
-                                <option value="Paspor">Paspor</option>
+                                <option value="Passport">Passport</option>
                             </select>
                             <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
                         </div>
@@ -195,6 +196,7 @@
                                 <option value="Indonesia">Indonesia</option>
                                 <option value="Malaysia">Malaysia</option>
                                 <option value="Singapura">Singapura</option>
+                                <option value="United States">United States</option>
                             </select>
                             <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
                         </div>
@@ -250,6 +252,7 @@
 </div>
 
 <script>
+    
     function openModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) modal.classList.remove('hidden');
@@ -265,8 +268,15 @@
         document.getElementById('editNomorDokumen').value = nomor;
         document.getElementById('editJenisDokumen').value = jenis;
         document.getElementById('editNegaraPenerbit').value = negara;
-        document.getElementById('editTanggalTerbit').value = terbit;
-        document.getElementById('editTanggalHabis').value = habis;
+
+        // Konversi tanggal ke YYYY-MM-DD
+        const toISO = (str) => {
+            const d = new Date(str);
+            return d.toISOString().split('T')[0];
+        };
+        document.getElementById('editTanggalTerbit').value = toISO(terbit);
+        document.getElementById('editTanggalHabis').value = toISO(habis);
+
         openModal('modalEdit');
     }
 
