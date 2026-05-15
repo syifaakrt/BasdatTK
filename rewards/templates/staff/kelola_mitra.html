@@ -6,8 +6,8 @@
 {% block content %}
 
   <!-- PAGE HEADER -->
-  <div class="flex justify-between items-center mb-5">
-    <h2 class="text-3xl font-bold text-[#0b1f3a] mb-2">Kelola Mitra</h2>
+  <div class="flex flex-wrap justify-between items-center mb-5 gap-3">
+    <h2 class="text-2xl sm:text-3xl font-bold text-[#0b1f3a]">Kelola Mitra</h2>
     <button onclick="openCreate()" class="bg-[#1a3a6e] hover:bg-[#22509e] text-white text-sm font-medium px-4 py-2 rounded-lg transition">+ Tambah Mitra</button>
   </div>
 
@@ -16,22 +16,22 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="bg-white rounded-lg p-4">
         <div class="text-xs text-[#7a8ca8] mb-1">Total Mitra</div>
-        <div class="text-3xl font-semibold text-[#1a2540]" id="totalMitra">0</div>
+        <div class="text-2xl sm:text-3xl font-semibold text-[#1a2540]" id="totalMitra">0</div>
         <div class="text-[11px] text-[#aab4c8] mt-1">mitra terdaftar</div>
       </div>
       <div class="bg-white rounded-lg p-4">
         <div class="text-xs text-[#7a8ca8] mb-1">Mitra Aktif</div>
-        <div class="text-3xl font-semibold text-green-700" id="mitraAktif">0</div>
+        <div class="text-2xl sm:text-3xl font-semibold text-green-700" id="mitraAktif">0</div>
         <div class="text-[11px] text-[#aab4c8] mt-1">aktif berkerja sama</div>
       </div>
       <div class="bg-white rounded-lg p-4">
         <div class="text-xs text-[#7a8ca8] mb-1">Total Penyedia</div>
-        <div class="text-3xl font-semibold text-[#1a2540]" id="totalPenyedia">0</div>
+        <div class="text-2xl sm:text-3xl font-semibold text-[#1a2540]" id="totalPenyedia">0</div>
         <div class="text-[11px] text-[#aab4c8] mt-1">penyedia unik</div>
       </div>
       <div class="bg-white rounded-lg p-4">
         <div class="text-xs text-[#7a8ca8] mb-1">Kerja Sama Terlama</div>
-        <div class="text-3xl font-semibold text-[#1a2540]" id="kerjasamaTerlama">-</div>
+        <div class="text-2xl sm:text-3xl font-semibold text-[#1a2540]" id="kerjasamaTerlama">-</div>
         <div class="text-[11px] text-[#aab4c8] mt-1">tahun bergabung</div>
       </div>
     </div>
@@ -41,30 +41,37 @@
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <div class="flex gap-2.5 p-3.5 border-b border-gray-200 flex-wrap">
       <input type="text" id="searchInput" oninput="filterTable()" placeholder="Cari nama atau email mitra..."
-        class="flex-1 max-w-[260px] px-3 py-1.5 border border-gray-300 rounded-md text-sm text-[#1a2540] outline-none focus:border-[#1a3a6e]">
+        class="flex-1 min-w-[180px] max-w-full sm:max-w-[260px] px-3 py-1.5 border border-gray-300 rounded-md text-sm text-[#1a2540] outline-none focus:border-[#1a3a6e]">
       <select id="filterPenyedia" onchange="filterTable()"
         class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-[#1a2540] outline-none focus:border-[#1a3a6e] cursor-pointer">
         <option value="">Semua Penyedia</option>
       </select>
     </div>
-    <table class="w-full border-collapse">
-      <thead>
-        <tr class="bg-gray-50">
-          <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">ID Penyedia</th>
-          <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Email Mitra</th>
-          <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Nama Mitra</th>
-          <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Tanggal Kerja Sama</th>
-          <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Durasi</th>
-          <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Aksi</th>
-        </tr>
-      </thead>
-      <tbody id="mitraTable"></tbody>
-    </table>
+
+    <!-- Desktop Table -->
+    <div class="hidden sm:block overflow-x-auto">
+      <table class="w-full border-collapse min-w-[600px]">
+        <thead>
+          <tr class="bg-gray-50">
+            <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">ID Penyedia</th>
+            <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Email Mitra</th>
+            <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Nama Mitra</th>
+            <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Tanggal Kerja Sama</th>
+            <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Durasi</th>
+            <th class="text-xs text-[#7a8ca8] font-medium px-3.5 py-2.5 text-left border-b border-gray-200">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="mitraTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card List -->
+    <div class="sm:hidden divide-y divide-gray-100" id="mitraCards"></div>
   </div>
 
   <!-- MODAL FORM -->
-  <div id="modalForm" class="hidden fixed inset-0 bg-[rgba(10,20,50,0.4)] flex justify-center items-center z-50">
-    <div class="bg-white p-7 rounded-xl w-[420px] max-w-[95vw] flex flex-col gap-3.5 shadow-2xl">
+  <div id="modalForm" class="hidden fixed inset-0 bg-[rgba(10,20,50,0.4)] flex justify-center items-center z-50 px-4">
+    <div class="bg-white p-6 sm:p-7 rounded-xl w-full max-w-[420px] flex flex-col gap-3.5 shadow-2xl">
       <h3 class="text-base font-semibold text-[#1a2540]" id="modalTitle">Tambah Mitra</h3>
       <div class="flex flex-col gap-1.5">
         <label class="text-xs text-[#7a8ca8] font-medium">Email Mitra</label>
@@ -96,6 +103,54 @@
 function openModal() { document.getElementById('modalForm').classList.remove('hidden'); document.getElementById('modalForm').classList.add('flex'); }
 function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('modalForm').classList.remove('flex'); }
 document.getElementById('modalForm').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+// Sync mobile cards with table rows (called after mitraTable is populated)
+function syncMobileCards() {
+  const tbody = document.getElementById('mitraTable');
+  const cards = document.getElementById('mitraCards');
+  if (!tbody || !cards) return;
+  cards.innerHTML = '';
+  Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (!cells.length) return;
+    const card = document.createElement('div');
+    card.className = 'p-4 flex flex-col gap-1 mitra-card-row';
+    card.dataset.search = (row.dataset.search || '').toLowerCase();
+    card.dataset.penyedia = row.dataset.penyedia || '';
+    card.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-sm font-semibold text-[#1a2540]">${cells[2]?.textContent || '-'}</div>
+          <div class="text-xs text-[#7a8ca8]">${cells[1]?.textContent || '-'}</div>
+        </div>
+        <div class="text-xs text-[#7a8ca8] bg-gray-100 px-2 py-1 rounded">ID: ${cells[0]?.textContent || '-'}</div>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#4a5e78] mt-1">
+        <span>📅 ${cells[3]?.textContent || '-'}</span>
+        <span>⏱ ${cells[4]?.textContent || '-'}</span>
+      </div>
+      <div class="flex gap-2 mt-2">${cells[5]?.innerHTML || ''}</div>
+    `;
+    cards.appendChild(card);
+  });
+}
+
+// Patch filterTable to also filter mobile cards
+const _origFilter = window.filterTable;
+window.filterTable = function() {
+  if (_origFilter) _origFilter();
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const penyedia = document.getElementById('filterPenyedia')?.value || '';
+  document.querySelectorAll('.mitra-card-row').forEach(card => {
+    const matchSearch = !search || card.dataset.search.includes(search);
+    const matchPenyedia = !penyedia || card.dataset.penyedia === penyedia;
+    card.style.display = (matchSearch && matchPenyedia) ? '' : 'none';
+  });
+};
+
+// After script.js populates mitraTable, sync cards
+const observer = new MutationObserver(() => syncMobileCards());
+observer.observe(document.getElementById('mitraTable'), { childList: true, subtree: true });
 </script>
 <script src="{% static 'rewards/js/script_mitra.js' %}"></script>
 <script>
